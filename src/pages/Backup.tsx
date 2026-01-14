@@ -132,17 +132,23 @@ export default function Backup() {
       }
 
       // Clear existing data and restore (in order to respect foreign keys)
-      // 1. Delete dependent tables first
+      // 1. Delete dependent tables first (order matters due to foreign keys)
       await supabase.from('stock_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('raw_material_deductions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('materials').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('material_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('parties').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-      // 2. Restore data in correct order
+      // 2. Restore data in correct order (parent tables first)
       if (backupData.parties.length > 0) {
         const { error } = await supabase.from('parties').insert(backupData.parties);
+        if (error) throw error;
+      }
+
+      if (backupData.material_categories.length > 0) {
+        const { error } = await supabase.from('material_categories').insert(backupData.material_categories);
         if (error) throw error;
       }
 
