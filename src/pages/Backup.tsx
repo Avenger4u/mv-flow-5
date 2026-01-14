@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Upload, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Download, Upload, AlertTriangle, CheckCircle, Loader2, XCircle, FileText, Users, Package, ShoppingCart, Layers, Scissors, History } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,11 +40,128 @@ interface BackupData {
   stock_transactions: StockTransaction[];
 }
 
+interface BackupPreview {
+  version: string;
+  exportedAt: string;
+  counts: {
+    parties: number;
+    materials: number;
+    material_categories: number;
+    orders: number;
+    order_items: number;
+    raw_material_deductions: number;
+    stock_transactions: number;
+  };
+  isValid: boolean;
+  errors: string[];
+}
+
+// Required fields for each table to validate structure
+const REQUIRED_FIELDS = {
+  parties: ['id', 'name'],
+  materials: ['id', 'name', 'rate', 'current_stock', 'unit'],
+  material_categories: ['id', 'name'],
+  orders: ['id', 'order_number', 'status', 'order_date'],
+  order_items: ['id', 'order_id', 'particular', 'quantity', 'rate_per_dzn', 'total', 'serial_no'],
+  raw_material_deductions: ['id', 'order_id', 'material_name', 'quantity', 'rate', 'amount'],
+  stock_transactions: ['id', 'material_id', 'transaction_type', 'quantity'],
+};
+
 export default function Backup() {
   const [downloading, setDownloading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [backupPreview, setBackupPreview] = useState<BackupPreview | null>(null);
+  const [parsing, setParsing] = useState(false);
   const { toast } = useToast();
+
+  const validateBackupStructure = (data: unknown): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (!data || typeof data !== 'object') {
+      errors.push('Invalid JSON structure');
+      return { isValid: false, errors };
+    }
+
+    const backup = data as Record<string, unknown>;
+
+    // Check required top-level fields
+    if (!backup.version || typeof backup.version !== 'string') {
+      errors.push('Missing or invalid "version" field');
+    }
+
+    if (!backup.exportedAt || typeof backup.exportedAt !== 'string') {
+      errors.push('Missing or invalid "exportedAt" field');
+    }
+
+    // Validate each table's structure
+    const tables = ['parties', 'materials', 'material_categories', 'orders', 'order_items', 'raw_material_deductions', 'stock_transactions'] as const;
+
+    for (const table of tables) {
+      if (!Array.isArray(backup[table])) {
+        errors.push(`Missing or invalid "${table}" array`);
+        continue;
+      }
+
+      const records = backup[table] as Record<string, unknown>[];
+      const requiredFields = REQUIRED_FIELDS[table];
+
+      // Check first record for required fields (if any records exist)
+      if (records.length > 0) {
+        const firstRecord = records[0];
+        for (const field of requiredFields) {
+          if (!(field in firstRecord)) {
+            errors.push(`Table "${table}" is missing required field "${field}"`);
+          }
+        }
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
+  };
+
+  const parseBackupFile = async (file: File): Promise<BackupPreview | null> => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      const validation = validateBackupStructure(data);
+
+      const preview: BackupPreview = {
+        version: data.version || 'Unknown',
+        exportedAt: data.exportedAt || 'Unknown',
+        counts: {
+          parties: Array.isArray(data.parties) ? data.parties.length : 0,
+          materials: Array.isArray(data.materials) ? data.materials.length : 0,
+          material_categories: Array.isArray(data.material_categories) ? data.material_categories.length : 0,
+          orders: Array.isArray(data.orders) ? data.orders.length : 0,
+          order_items: Array.isArray(data.order_items) ? data.order_items.length : 0,
+          raw_material_deductions: Array.isArray(data.raw_material_deductions) ? data.raw_material_deductions.length : 0,
+          stock_transactions: Array.isArray(data.stock_transactions) ? data.stock_transactions.length : 0,
+        },
+        isValid: validation.isValid,
+        errors: validation.errors,
+      };
+
+      return preview;
+    } catch (error) {
+      return {
+        version: 'Unknown',
+        exportedAt: 'Unknown',
+        counts: {
+          parties: 0,
+          materials: 0,
+          material_categories: 0,
+          orders: 0,
+          order_items: 0,
+          raw_material_deductions: 0,
+          stock_transactions: 0,
+        },
+        isValid: false,
+        errors: [error instanceof Error ? `Parse error: ${error.message}` : 'Failed to parse backup file'],
+      };
+    }
+  };
 
   const handleDownloadBackup = async () => {
     setDownloading(true);
@@ -110,26 +227,35 @@ export default function Backup() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      setParsing(true);
+      const preview = await parseBackupFile(file);
+      setBackupPreview(preview);
+      setParsing(false);
+    } else {
+      setSelectedFile(null);
+      setBackupPreview(null);
     }
   };
 
+  const clearSelection = () => {
+    setSelectedFile(null);
+    setBackupPreview(null);
+    const fileInput = document.getElementById('backup-file') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
   const handleRestore = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !backupPreview?.isValid) return;
 
     setRestoring(true);
 
     try {
       const text = await selectedFile.text();
       const backupData: BackupData = JSON.parse(text);
-
-      // Validate backup structure
-      if (!backupData.version || !backupData.exportedAt) {
-        throw new Error('Invalid backup file format');
-      }
 
       // Clear existing data and restore (in order to respect foreign keys)
       // 1. Delete dependent tables first (order matters due to foreign keys)
@@ -182,11 +308,7 @@ export default function Backup() {
         description: 'Your data has been restored successfully',
       });
 
-      setSelectedFile(null);
-      
-      // Reset the file input
-      const fileInput = document.getElementById('backup-file') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      clearSelection();
 
     } catch (error) {
       console.error('Error restoring backup:', error);
@@ -197,6 +319,14 @@ export default function Backup() {
       });
     } finally {
       setRestoring(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString();
+    } catch {
+      return dateStr;
     }
   };
 
@@ -298,17 +428,105 @@ export default function Backup() {
                   onChange={handleFileSelect}
                 />
                 {selectedFile && (
-                  <p className="text-sm text-muted-foreground">
-                    Selected: {selectedFile.name}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Selected: {selectedFile.name}
+                    </p>
+                    <Button variant="ghost" size="sm" onClick={clearSelection}>
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
+
+              {/* Parsing indicator */}
+              {parsing && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing backup file...
+                </div>
+              )}
+
+              {/* Backup Preview */}
+              {backupPreview && !parsing && (
+                <div className={`border rounded-lg p-4 space-y-3 ${backupPreview.isValid ? 'border-success/50 bg-success/5' : 'border-destructive/50 bg-destructive/5'}`}>
+                  <div className="flex items-center gap-2">
+                    {backupPreview.isValid ? (
+                      <CheckCircle className="h-5 w-5 text-success" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-destructive" />
+                    )}
+                    <span className="font-medium">
+                      {backupPreview.isValid ? 'Valid Backup File' : 'Invalid Backup File'}
+                    </span>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <FileText className="h-3.5 w-3.5" />
+                      Version: {backupPreview.version}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <History className="h-3.5 w-3.5" />
+                      {formatDate(backupPreview.exportedAt)}
+                    </div>
+                  </div>
+
+                  {/* Counts */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.parties} Parties</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.orders} Orders</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Package className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.materials} Materials</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.material_categories} Categories</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.order_items} Order Items</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Scissors className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.raw_material_deductions} Deductions</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 col-span-2">
+                      <History className="h-3.5 w-3.5 text-primary" />
+                      <span>{backupPreview.counts.stock_transactions} Stock Transactions</span>
+                    </div>
+                  </div>
+
+                  {/* Validation Errors */}
+                  {backupPreview.errors.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-destructive">Validation Errors:</p>
+                      <ul className="text-sm text-destructive/80 space-y-0.5">
+                        {backupPreview.errors.map((error, idx) => (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <span className="mt-1">•</span>
+                            <span>{error}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
-                    disabled={!selectedFile || restoring}
+                    disabled={!selectedFile || !backupPreview?.isValid || restoring}
                     className="w-full"
                   >
                     {restoring ? (
@@ -327,8 +545,20 @@ export default function Backup() {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Restore</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will delete all existing data and replace it with the backup. This action cannot be undone.
+                    <AlertDialogDescription className="space-y-2">
+                      <p>This will delete all existing data and replace it with the backup. This action cannot be undone.</p>
+                      {backupPreview && (
+                        <div className="mt-3 p-3 bg-muted rounded-md text-sm">
+                          <p className="font-medium mb-2">You are about to restore:</p>
+                          <ul className="space-y-1">
+                            <li>• {backupPreview.counts.parties} parties</li>
+                            <li>• {backupPreview.counts.orders} orders with {backupPreview.counts.order_items} items</li>
+                            <li>• {backupPreview.counts.materials} materials in {backupPreview.counts.material_categories} categories</li>
+                            <li>• {backupPreview.counts.raw_material_deductions} raw material deductions</li>
+                            <li>• {backupPreview.counts.stock_transactions} stock transactions</li>
+                          </ul>
+                        </div>
+                      )}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
