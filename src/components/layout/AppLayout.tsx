@@ -13,6 +13,7 @@ import {
   X,
   FileText,
   Download,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Orders', href: '/orders', icon: FileText },
   { name: 'Parties', href: '/parties', icon: Users },
   { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Material Reports', href: '/material-reports', icon: BarChart3 },
   { name: 'Backup', href: '/backup', icon: Download },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

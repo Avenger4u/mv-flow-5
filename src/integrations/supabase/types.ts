@@ -298,7 +298,10 @@ export type Database = {
           id: string
           material_id: string
           notes: string | null
+          order_id: string | null
+          order_number: string | null
           quantity: number
+          remarks: string | null
           transaction_type: string
         }
         Insert: {
@@ -306,7 +309,10 @@ export type Database = {
           id?: string
           material_id: string
           notes?: string | null
+          order_id?: string | null
+          order_number?: string | null
           quantity: number
+          remarks?: string | null
           transaction_type: string
         }
         Update: {
@@ -314,7 +320,10 @@ export type Database = {
           id?: string
           material_id?: string
           notes?: string | null
+          order_id?: string | null
+          order_number?: string | null
           quantity?: number
+          remarks?: string | null
           transaction_type?: string
         }
         Relationships: [
@@ -325,7 +334,32 @@ export type Database = {
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stock_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      units: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
