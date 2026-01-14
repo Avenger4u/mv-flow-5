@@ -25,9 +25,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Search, Upload, Package, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Upload, Package, AlertTriangle, History } from 'lucide-react';
+import { MaterialLedger } from '@/components/inventory/MaterialLedger';
 
 interface Category {
+  id: string;
+  name: string;
+}
+
+interface Unit {
   id: string;
   name: string;
 }
@@ -65,20 +71,21 @@ const initialFormData: MaterialFormData = {
   notes: '',
 };
 
-const unitOptions = ['Pcs', 'Dzn', 'Meter', 'Thaan', 'Kg', 'Gram', 'Set'];
-
 export default function Inventory() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [stockAction, setStockAction] = useState<'add' | 'reduce'>('add');
   const [stockQuantity, setStockQuantity] = useState('');
+  const [stockRemarks, setStockRemarks] = useState('');
   const [formData, setFormData] = useState<MaterialFormData>(initialFormData);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -91,19 +98,22 @@ export default function Inventory() {
 
   const fetchData = async () => {
     try {
-      const [materialsRes, categoriesRes] = await Promise.all([
+      const [materialsRes, categoriesRes, unitsRes] = await Promise.all([
         supabase
           .from('materials')
           .select('*, material_categories(id, name)')
           .order('name'),
         supabase.from('material_categories').select('*').order('name'),
+        supabase.from('units').select('*').order('name'),
       ]);
 
       if (materialsRes.error) throw materialsRes.error;
       if (categoriesRes.error) throw categoriesRes.error;
+      if (unitsRes.error) throw unitsRes.error;
 
       setMaterials(materialsRes.data || []);
       setCategories(categoriesRes.data || []);
+      setUnits(unitsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -259,6 +269,7 @@ export default function Inventory() {
           material_id: selectedMaterial.id,
           transaction_type: stockAction,
           quantity: qty,
+          remarks: stockRemarks.trim() || null,
         });
 
       if (transactionError) throw transactionError;
@@ -271,6 +282,7 @@ export default function Inventory() {
       setStockDialogOpen(false);
       setSelectedMaterial(null);
       setStockQuantity('');
+      setStockRemarks('');
       fetchData();
     } catch (error) {
       console.error('Error updating stock:', error);
@@ -459,9 +471,9 @@ export default function Inventory() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {unitOptions.map((unit) => (
-                          <SelectItem key={unit} value={unit}>
-                            {unit}
+                        {units.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.name}>
+                            {unit.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -640,6 +652,18 @@ export default function Inventory() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
+                            title="View Ledger"
+                            onClick={() => {
+                              setSelectedMaterial(material);
+                              setLedgerDialogOpen(true);
+                            }}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
                             onClick={() => handleEdit(material)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -685,6 +709,14 @@ export default function Inventory() {
                   placeholder="Enter quantity"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Remarks (Optional)</Label>
+                <Input
+                  value={stockRemarks}
+                  onChange={(e) => setStockRemarks(e.target.value)}
+                  placeholder="e.g., Purchase, Return, Adjustment"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStockDialogOpen(false)}>
@@ -700,6 +732,16 @@ export default function Inventory() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Material Ledger Dialog */}
+        {selectedMaterial && (
+          <MaterialLedger
+            material={selectedMaterial}
+            open={ledgerDialogOpen}
+            onOpenChange={setLedgerDialogOpen}
+            onStockUpdated={fetchData}
+          />
+        )}
       </div>
     </AppLayout>
   );

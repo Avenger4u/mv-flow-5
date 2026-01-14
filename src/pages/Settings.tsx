@@ -2,6 +2,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Shield, Info } from 'lucide-react';
+import { CategoryManager } from '@/components/settings/CategoryManager';
+import { UnitManager } from '@/components/settings/UnitManager';
 
 export default function Settings() {
   const { user, isAdmin } = useAuth();
@@ -41,6 +43,12 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Category Manager */}
+        <CategoryManager />
+
+        {/* Unit Manager */}
+        <UnitManager />
 
         {/* App Info */}
         <Card>

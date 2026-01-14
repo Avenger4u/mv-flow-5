@@ -15,6 +15,7 @@ import OrderDetail from "./pages/OrderDetail";
 import Parties from "./pages/Parties";
 import PartyDetail from "./pages/PartyDetail";
 import Inventory from "./pages/Inventory";
+import MaterialReports from "./pages/MaterialReports";
 import Backup from "./pages/Backup";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -129,6 +130,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Inventory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/material-reports"
+        element={
+          <ProtectedRoute>
+            <MaterialReports />
           </ProtectedRoute>
         }
       />
