@@ -376,7 +376,7 @@ export default function CreateOrder() {
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) throw itemsError;
 
-      // Create deductions if any
+      // Create deductions if any and auto-deduct stock
       if (deductions.length > 0) {
         const validDeductions = deductions.filter(
           (d) => d.material_name.trim() && d.quantity
@@ -396,6 +396,37 @@ export default function CreateOrder() {
             .insert(deductionItems);
 
           if (deductionsError) throw deductionsError;
+
+          // Auto-deduct stock for each material
+          for (const d of validDeductions) {
+            const materialName = d.material_name.trim();
+            const qty = parseFloat(d.quantity);
+
+            // Find material by name
+            const { data: material } = await supabase
+              .from('materials')
+              .select('id, current_stock')
+              .ilike('name', materialName)
+              .maybeSingle();
+
+            if (material) {
+              // Create stock transaction
+              await supabase.from('stock_transactions').insert({
+                material_id: material.id,
+                transaction_type: 'out',
+                quantity: qty,
+                order_id: order.id,
+                order_number: finalOrderNumber,
+                remarks: `Used in order ${finalOrderNumber}`,
+              });
+
+              // Update current stock
+              await supabase
+                .from('materials')
+                .update({ current_stock: material.current_stock - qty })
+                .eq('id', material.id);
+            }
+          }
         }
       }
 

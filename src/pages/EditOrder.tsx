@@ -246,10 +246,7 @@ export default function EditOrder() {
         await supabase.from('order_items').delete().in('id', deletedItemIds);
       }
 
-      // Delete removed deductions
-      if (deletedDeductionIds.length > 0) {
-        await supabase.from('raw_material_deductions').delete().in('id', deletedDeductionIds);
-      }
+      // Note: Deduction deletion with stock restoration is handled below
 
       // Update/insert items
       for (let i = 0; i < validItems.length; i++) {
@@ -271,6 +268,45 @@ export default function EditOrder() {
         }
       }
 
+      // Handle deleted deductions - restore stock
+      if (deletedDeductionIds.length > 0) {
+        // Get deleted deduction details first
+        const { data: deletedDeductions } = await supabase
+          .from('raw_material_deductions')
+          .select('material_name, quantity')
+          .in('id', deletedDeductionIds);
+
+        if (deletedDeductions) {
+          for (const d of deletedDeductions) {
+            const { data: material } = await supabase
+              .from('materials')
+              .select('id, current_stock')
+              .ilike('name', d.material_name)
+              .maybeSingle();
+
+            if (material) {
+              // Create stock-in transaction to restore stock
+              await supabase.from('stock_transactions').insert({
+                material_id: material.id,
+                transaction_type: 'in',
+                quantity: d.quantity,
+                order_id: id,
+                order_number: orderNumber,
+                remarks: `Restored from deleted deduction in order ${orderNumber}`,
+              });
+
+              // Update current stock
+              await supabase
+                .from('materials')
+                .update({ current_stock: material.current_stock + d.quantity })
+                .eq('id', material.id);
+            }
+          }
+        }
+
+        await supabase.from('raw_material_deductions').delete().in('id', deletedDeductionIds);
+      }
+
       // Update/insert deductions
       const validDeductions = deductions.filter((d) => d.material_name.trim() && d.quantity);
       for (const d of validDeductions) {
@@ -284,6 +320,29 @@ export default function EditOrder() {
 
         if (d.isNew) {
           await supabase.from('raw_material_deductions').insert(deductionData);
+
+          // Auto-deduct stock for new deduction
+          const { data: material } = await supabase
+            .from('materials')
+            .select('id, current_stock')
+            .ilike('name', d.material_name.trim())
+            .maybeSingle();
+
+          if (material) {
+            await supabase.from('stock_transactions').insert({
+              material_id: material.id,
+              transaction_type: 'out',
+              quantity: parseFloat(d.quantity),
+              order_id: id,
+              order_number: orderNumber,
+              remarks: `Used in order ${orderNumber}`,
+            });
+
+            await supabase
+              .from('materials')
+              .update({ current_stock: material.current_stock - parseFloat(d.quantity) })
+              .eq('id', material.id);
+          }
         } else {
           await supabase.from('raw_material_deductions').update(deductionData).eq('id', d.id);
         }
