@@ -55,6 +55,7 @@ export default function CreateOrder() {
   const { toast } = useToast();
 
   const [parties, setParties] = useState<Party[]>([]);
+  const [materials, setMaterials] = useState<{ id: string; name: string; current_stock: number; unit: string; rate: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checkingOrderNumber, setCheckingOrderNumber] = useState(false);
@@ -80,6 +81,7 @@ export default function CreateOrder() {
 
   useEffect(() => {
     fetchParties();
+    fetchMaterials();
   }, []);
 
   // Calculate next order number when party changes
@@ -203,6 +205,38 @@ export default function CreateOrder() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchMaterials = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('materials')
+        .select('id, name, current_stock, unit, rate')
+        .order('name');
+
+      if (error) throw error;
+      setMaterials(data || []);
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+    }
+  };
+
+  const handleMaterialSelect = (deductionId: string, materialName: string) => {
+    const material = materials.find(m => m.name === materialName);
+    setDeductions((prevDeductions) =>
+      prevDeductions.map((item) => {
+        if (item.id !== deductionId) return item;
+        const rate = material?.rate?.toString() || item.rate;
+        const qty = parseFloat(item.quantity) || 0;
+        const r = parseFloat(rate) || 0;
+        return {
+          ...item,
+          material_name: materialName,
+          rate: rate,
+          amount: qty * r,
+        };
+      })
+    );
   };
 
   const calculateItemTotal = (quantity: string, rate: string): number => {
@@ -803,13 +837,26 @@ export default function CreateOrder() {
                       {deductions.map((item) => (
                         <tr key={item.id} className="border-b">
                           <td className="py-2 px-2">
-                            <Input
+                            <Select
                               value={item.material_name}
-                              onChange={(e) =>
-                                updateDeduction(item.id, 'material_name', e.target.value)
-                              }
-                              placeholder="Material name"
-                            />
+                              onValueChange={(value) => handleMaterialSelect(item.id, value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select material" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border shadow-lg z-50">
+                                {materials.map((m) => (
+                                  <SelectItem key={m.id} value={m.name}>
+                                    <span className="flex items-center gap-2">
+                                      {m.name}
+                                      <span className={`text-xs ${m.current_stock <= 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                        ({m.current_stock} {m.unit})
+                                      </span>
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="py-2 px-2">
                             <Input
@@ -867,13 +914,26 @@ export default function CreateOrder() {
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
-                      <Input
+                      <Select
                         value={item.material_name}
-                        onChange={(e) =>
-                          updateDeduction(item.id, 'material_name', e.target.value)
-                        }
-                        placeholder="Material name"
-                      />
+                        onValueChange={(value) => handleMaterialSelect(item.id, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select material" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          {materials.map((m) => (
+                            <SelectItem key={m.id} value={m.name}>
+                              <span className="flex items-center gap-2">
+                                {m.name}
+                                <span className={`text-xs ${m.current_stock <= 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                  ({m.current_stock} {m.unit})
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">Qty</Label>
