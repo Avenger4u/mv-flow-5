@@ -14,6 +14,8 @@ import {
   FileText,
   Download,
   BarChart3,
+  ArrowLeftRight,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +29,8 @@ const navigation = [
   { name: 'Orders', href: '/orders', icon: FileText },
   { name: 'Parties', href: '/parties', icon: Users },
   { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Material Reports', href: '/material-reports', icon: BarChart3 },
+  { name: 'Stock Entry', href: '/stock-entry', icon: ArrowLeftRight },
+  { name: 'Stock Reports', href: '/stock-reports', icon: ClipboardList },
   { name: 'Backup', href: '/backup', icon: Download },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
