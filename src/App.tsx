@@ -15,7 +15,8 @@ import OrderDetail from "./pages/OrderDetail";
 import Parties from "./pages/Parties";
 import PartyDetail from "./pages/PartyDetail";
 import Inventory from "./pages/Inventory";
-import MaterialReports from "./pages/MaterialReports";
+import StockEntry from "./pages/StockEntry";
+import StockReports from "./pages/StockReports";
 import Backup from "./pages/Backup";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -134,10 +135,18 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/material-reports"
+        path="/stock-entry"
         element={
           <ProtectedRoute>
-            <MaterialReports />
+            <StockEntry />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stock-reports"
+        element={
+          <ProtectedRoute>
+            <StockReports />
           </ProtectedRoute>
         }
       />

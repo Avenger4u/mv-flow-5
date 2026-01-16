@@ -42,6 +42,7 @@ export type Database = {
           min_stock: number | null
           name: string
           notes: string | null
+          opening_stock: number
           rate: number
           unit: string
           updated_at: string
@@ -55,6 +56,7 @@ export type Database = {
           min_stock?: number | null
           name: string
           notes?: string | null
+          opening_stock?: number
           rate?: number
           unit?: string
           updated_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           min_stock?: number | null
           name?: string
           notes?: string | null
+          opening_stock?: number
           rate?: number
           unit?: string
           updated_at?: string
@@ -294,36 +297,54 @@ export type Database = {
       }
       stock_transactions: {
         Row: {
+          balance_after: number | null
           created_at: string
           id: string
           material_id: string
           notes: string | null
           order_id: string | null
           order_number: string | null
+          party_id: string | null
           quantity: number
+          rate: number | null
+          reason_type: string | null
           remarks: string | null
+          source_type: string | null
+          transaction_date: string
           transaction_type: string
         }
         Insert: {
+          balance_after?: number | null
           created_at?: string
           id?: string
           material_id: string
           notes?: string | null
           order_id?: string | null
           order_number?: string | null
+          party_id?: string | null
           quantity: number
+          rate?: number | null
+          reason_type?: string | null
           remarks?: string | null
+          source_type?: string | null
+          transaction_date?: string
           transaction_type: string
         }
         Update: {
+          balance_after?: number | null
           created_at?: string
           id?: string
           material_id?: string
           notes?: string | null
           order_id?: string | null
           order_number?: string | null
+          party_id?: string | null
           quantity?: number
+          rate?: number | null
+          reason_type?: string | null
           remarks?: string | null
+          source_type?: string | null
+          transaction_date?: string
           transaction_type?: string
         }
         Relationships: [
@@ -339,6 +360,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transactions_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
             referencedColumns: ["id"]
           },
         ]
@@ -400,6 +428,20 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      stock_in_source:
+        | "market_purchase"
+        | "party_supply"
+        | "other_supplier"
+        | "return"
+        | "adjustment"
+        | "opening_stock"
+      stock_out_reason:
+        | "used_in_order"
+        | "wastage"
+        | "sample"
+        | "damage"
+        | "returned"
+        | "adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -528,6 +570,22 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      stock_in_source: [
+        "market_purchase",
+        "party_supply",
+        "other_supplier",
+        "return",
+        "adjustment",
+        "opening_stock",
+      ],
+      stock_out_reason: [
+        "used_in_order",
+        "wastage",
+        "sample",
+        "damage",
+        "returned",
+        "adjustment",
+      ],
     },
   },
 } as const
