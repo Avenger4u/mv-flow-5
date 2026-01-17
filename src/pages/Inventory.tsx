@@ -56,7 +56,7 @@ interface MaterialFormData {
   category_id: string;
   unit: string;
   rate: string;
-  current_stock: string;
+  opening_stock: string;
   min_stock: string;
   notes: string;
 }
@@ -66,7 +66,7 @@ const initialFormData: MaterialFormData = {
   category_id: '',
   unit: 'Pcs',
   rate: '',
-  current_stock: '0',
+  opening_stock: '0',
   min_stock: '0',
   notes: '',
 };
@@ -180,21 +180,23 @@ export default function Inventory() {
         imageUrl = await uploadImage(imageFile);
       }
 
-      const materialData = {
-        name: formData.name.trim(),
-        category_id: formData.category_id || null,
-        unit: formData.unit,
-        rate: parseFloat(formData.rate) || 0,
-        current_stock: parseFloat(formData.current_stock) || 0,
-        min_stock: parseFloat(formData.min_stock) || 0,
-        notes: formData.notes.trim() || null,
-        image_url: imageUrl,
-      };
-
+      const openingStock = parseFloat(formData.opening_stock) || 0;
+      
       if (editingMaterial) {
+        // For editing, don't change opening_stock or current_stock via this form
+        const updateData = {
+          name: formData.name.trim(),
+          category_id: formData.category_id || null,
+          unit: formData.unit,
+          rate: parseFloat(formData.rate) || 0,
+          min_stock: parseFloat(formData.min_stock) || 0,
+          notes: formData.notes.trim() || null,
+          image_url: imageUrl,
+        };
+
         const { error } = await supabase
           .from('materials')
-          .update(materialData)
+          .update(updateData)
           .eq('id', editingMaterial.id);
 
         if (error) throw error;
@@ -204,9 +206,39 @@ export default function Inventory() {
           description: 'Material updated successfully',
         });
       } else {
-        const { error } = await supabase.from('materials').insert(materialData);
+        // For new materials, set opening_stock and current_stock to the same value
+        const insertData = {
+          name: formData.name.trim(),
+          category_id: formData.category_id || null,
+          unit: formData.unit,
+          rate: parseFloat(formData.rate) || 0,
+          opening_stock: openingStock,
+          current_stock: openingStock,
+          min_stock: parseFloat(formData.min_stock) || 0,
+          notes: formData.notes.trim() || null,
+          image_url: imageUrl,
+        };
+
+        const { data: newMaterial, error } = await supabase
+          .from('materials')
+          .insert(insertData)
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Create opening stock ledger entry if opening stock > 0
+        if (openingStock > 0 && newMaterial) {
+          await supabase.from('stock_transactions').insert({
+            material_id: newMaterial.id,
+            transaction_type: 'in',
+            quantity: openingStock,
+            transaction_date: new Date().toISOString().split('T')[0],
+            source_type: 'opening_stock',
+            balance_after: openingStock,
+            remarks: 'Opening stock entry',
+          });
+        }
 
         toast({
           title: 'Success',
@@ -301,7 +333,7 @@ export default function Inventory() {
       category_id: material.category_id || '',
       unit: material.unit,
       rate: material.rate.toString(),
-      current_stock: material.current_stock.toString(),
+      opening_stock: '0', // Not editable for existing materials
       min_stock: material.min_stock?.toString() || '0',
       notes: material.notes || '',
     });
@@ -494,19 +526,24 @@ export default function Inventory() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="current_stock">Current Stock</Label>
-                    <Input
-                      id="current_stock"
-                      type="number"
-                      step="0.01"
-                      value={formData.current_stock}
-                      onChange={(e) =>
-                        setFormData({ ...formData, current_stock: e.target.value })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
+                  {!editingMaterial && (
+                    <div className="space-y-2">
+                      <Label htmlFor="opening_stock">Opening Stock</Label>
+                      <Input
+                        id="opening_stock"
+                        type="number"
+                        step="0.01"
+                        value={formData.opening_stock}
+                        onChange={(e) =>
+                          setFormData({ ...formData, opening_stock: e.target.value })
+                        }
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Initial stock quantity. This will create an opening stock ledger entry.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="min_stock">Minimum Stock (Alert Level)</Label>

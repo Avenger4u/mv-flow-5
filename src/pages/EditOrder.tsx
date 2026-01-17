@@ -38,6 +38,8 @@ interface DeductionItem {
   rate: string;
   amount: number;
   isNew?: boolean;
+  originalQuantity?: number; // Track original quantity for existing deductions
+  originalMaterialName?: string; // Track original material for existing deductions
 }
 
 export default function EditOrder() {
@@ -106,6 +108,8 @@ export default function EditOrder() {
           quantity: d.quantity.toString(),
           rate: d.rate.toString(),
           amount: d.amount,
+          originalQuantity: d.quantity, // Store original quantity
+          originalMaterialName: d.material_name, // Store original material name
         }))
       );
     } catch (error) {
@@ -395,7 +399,136 @@ export default function EditOrder() {
               .eq('id', material.id);
           }
         } else {
+          // Handle existing deduction - check for quantity or material changes
+          const newQty = parseFloat(d.quantity);
+          const originalQty = d.originalQuantity || 0;
+          const qtyDiff = newQty - originalQty;
+          const materialChanged = d.material_name.trim().toLowerCase() !== (d.originalMaterialName || '').toLowerCase();
+          
+          // Update the deduction record
           await supabase.from('raw_material_deductions').update(deductionData).eq('id', d.id);
+          
+          // If material changed, restore old material stock and deduct from new material
+          if (materialChanged) {
+            // Restore stock to old material
+            if (d.originalMaterialName) {
+              const { data: oldMaterial } = await supabase
+                .from('materials')
+                .select('id, current_stock')
+                .ilike('name', d.originalMaterialName)
+                .maybeSingle();
+              
+              if (oldMaterial) {
+                const restoredBalance = oldMaterial.current_stock + originalQty;
+                
+                await supabase.from('stock_transactions').insert({
+                  material_id: oldMaterial.id,
+                  transaction_type: 'in',
+                  quantity: originalQty,
+                  order_id: id,
+                  order_number: orderNumber,
+                  party_id: partyId || null,
+                  transaction_date: orderDate,
+                  source_type: 'adjustment',
+                  balance_after: restoredBalance,
+                  remarks: `Material changed from ${d.originalMaterialName} in order ${orderNumber}`,
+                });
+                
+                await supabase
+                  .from('materials')
+                  .update({ current_stock: restoredBalance })
+                  .eq('id', oldMaterial.id);
+              }
+            }
+            
+            // Deduct from new material
+            const { data: newMaterial } = await supabase
+              .from('materials')
+              .select('id, current_stock')
+              .ilike('name', d.material_name.trim())
+              .maybeSingle();
+            
+            if (newMaterial) {
+              const newBalance = newMaterial.current_stock - newQty;
+              const rate = parseFloat(d.rate) || 0;
+              
+              await supabase.from('stock_transactions').insert({
+                material_id: newMaterial.id,
+                transaction_type: 'out',
+                quantity: newQty,
+                rate: rate,
+                order_id: id,
+                order_number: orderNumber,
+                party_id: partyId || null,
+                transaction_date: orderDate,
+                reason_type: 'used_in_order',
+                balance_after: newBalance,
+                remarks: `Material changed to ${d.material_name} in order ${orderNumber}`,
+              });
+              
+              await supabase
+                .from('materials')
+                .update({ current_stock: newBalance })
+                .eq('id', newMaterial.id);
+            }
+          } else if (qtyDiff !== 0) {
+            // Same material, but quantity changed
+            const { data: material } = await supabase
+              .from('materials')
+              .select('id, current_stock')
+              .ilike('name', d.material_name.trim())
+              .maybeSingle();
+            
+            if (material) {
+              const rate = parseFloat(d.rate) || 0;
+              
+              if (qtyDiff > 0) {
+                // Quantity increased - deduct more from stock
+                const newBalance = material.current_stock - qtyDiff;
+                
+                await supabase.from('stock_transactions').insert({
+                  material_id: material.id,
+                  transaction_type: 'out',
+                  quantity: qtyDiff,
+                  rate: rate,
+                  order_id: id,
+                  order_number: orderNumber,
+                  party_id: partyId || null,
+                  transaction_date: orderDate,
+                  reason_type: 'used_in_order',
+                  balance_after: newBalance,
+                  remarks: `Quantity increased by ${qtyDiff} in order ${orderNumber}`,
+                });
+                
+                await supabase
+                  .from('materials')
+                  .update({ current_stock: newBalance })
+                  .eq('id', material.id);
+              } else {
+                // Quantity decreased - restore stock
+                const restoreQty = Math.abs(qtyDiff);
+                const newBalance = material.current_stock + restoreQty;
+                
+                await supabase.from('stock_transactions').insert({
+                  material_id: material.id,
+                  transaction_type: 'in',
+                  quantity: restoreQty,
+                  order_id: id,
+                  order_number: orderNumber,
+                  party_id: partyId || null,
+                  transaction_date: orderDate,
+                  source_type: 'adjustment',
+                  balance_after: newBalance,
+                  remarks: `Quantity reduced by ${restoreQty} in order ${orderNumber}`,
+                });
+                
+                await supabase
+                  .from('materials')
+                  .update({ current_stock: newBalance })
+                  .eq('id', material.id);
+              }
+            }
+          }
         }
       }
 
