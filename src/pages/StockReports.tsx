@@ -38,6 +38,7 @@ import {
   Users,
   FileText,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -124,6 +125,7 @@ export default function StockReports() {
   const [materialSummary, setMaterialSummary] = useState<MaterialSummary[]>([]);
   const [partySummary, setPartySummary] = useState<PartySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
 
   // Filters
@@ -142,8 +144,10 @@ export default function StockReports() {
     }
   }, [startDate, endDate, selectedMaterial, selectedParty, materials]);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = async (showRefreshToast = false) => {
     try {
+      if (showRefreshToast) setRefreshing(true);
+      
       const [materialsRes, partiesRes] = await Promise.all([
         supabase.from('materials').select('id, name, unit').order('name'),
         supabase.from('parties').select('id, name').order('name'),
@@ -154,6 +158,13 @@ export default function StockReports() {
 
       setMaterials(materialsRes.data || []);
       setParties(partiesRes.data || []);
+      
+      if (showRefreshToast) {
+        toast({
+          title: 'Reports Refreshed',
+          description: 'Stock reports have been updated with latest data',
+        });
+      }
     } catch (error) {
       console.error('Error fetching initial data:', error);
       toast({
@@ -163,7 +174,12 @@ export default function StockReports() {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+  
+  const handleRefresh = () => {
+    fetchInitialData(true);
   };
 
   const fetchReports = async () => {
@@ -412,6 +428,15 @@ export default function StockReports() {
               Comprehensive stock movement and ledger reports
             </p>
           </div>
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            variant="outline"
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh Reports'}
+          </Button>
         </div>
 
         {/* Filters */}
