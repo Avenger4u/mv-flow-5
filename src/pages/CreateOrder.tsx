@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Save, Loader2, Hash, Pencil } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, Hash, Pencil, AlertTriangle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +67,8 @@ export default function CreateOrder() {
   const [customOrderNumber, setCustomOrderNumber] = useState<string>('');
   const [isEditingOrderNumber, setIsEditingOrderNumber] = useState(false);
   const [showOrderNumberConfirm, setShowOrderNumberConfirm] = useState(false);
+  const [showStockWarningConfirm, setShowStockWarningConfirm] = useState(false);
+  const [stockWarnings, setStockWarnings] = useState<{ material: string; requested: number; available: number; unit: string }[]>([]);
   const [pendingOrderNumber, setPendingOrderNumber] = useState<string>('');
   const [newPartyName, setNewPartyName] = useState('');
   const [showNewParty, setShowNewParty] = useState(false);
@@ -323,7 +325,38 @@ export default function CreateOrder() {
   const totalDeductions = deductions.reduce((sum, item) => sum + item.amount, 0);
   const netTotal = subtotal - totalDeductions;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Check stock availability for deductions
+  const getStockWarnings = () => {
+    const warnings: { material: string; requested: number; available: number; unit: string }[] = [];
+    const validDeductions = deductions.filter(d => d.material_name.trim() && d.quantity);
+    
+    validDeductions.forEach(d => {
+      const material = materials.find(m => m.name.toLowerCase() === d.material_name.trim().toLowerCase());
+      if (material) {
+        const requestedQty = parseFloat(d.quantity) || 0;
+        if (requestedQty > material.current_stock) {
+          warnings.push({
+            material: material.name,
+            requested: requestedQty,
+            available: material.current_stock,
+            unit: material.unit,
+          });
+        }
+      }
+    });
+    
+    return warnings;
+  };
+
+  // Check if a specific deduction has insufficient stock
+  const hasInsufficientStock = (materialName: string, quantity: string) => {
+    const material = materials.find(m => m.name.toLowerCase() === materialName.trim().toLowerCase());
+    if (!material) return false;
+    const requestedQty = parseFloat(quantity) || 0;
+    return requestedQty > material.current_stock;
+  };
+
+  const handleSubmit = async (e: React.FormEvent, bypassStockCheck = false) => {
     e.preventDefault();
 
     // Validation
@@ -344,6 +377,16 @@ export default function CreateOrder() {
         variant: 'destructive',
       });
       return;
+    }
+
+    // Stock validation - check if any deduction exceeds available stock
+    if (!bypassStockCheck) {
+      const warnings = getStockWarnings();
+      if (warnings.length > 0) {
+        setStockWarnings(warnings);
+        setShowStockWarningConfirm(true);
+        return;
+      }
     }
 
     setSaving(true);
@@ -842,29 +885,36 @@ export default function CreateOrder() {
                       </tr>
                     </thead>
                     <tbody>
-                      {deductions.map((item) => (
-                        <tr key={item.id} className="border-b">
+                      {deductions.map((item) => {
+                        const insufficientStock = hasInsufficientStock(item.material_name, item.quantity);
+                        return (
+                        <tr key={item.id} className={`border-b ${insufficientStock ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
                           <td className="py-2 px-2">
-                            <Select
-                              value={item.material_name}
-                              onValueChange={(value) => handleMaterialSelect(item.id, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select material" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-background border shadow-lg z-50">
-                                {materials.map((m) => (
-                                  <SelectItem key={m.id} value={m.name}>
-                                    <span className="flex items-center gap-2">
-                                      {m.name}
-                                      <span className={`text-xs ${m.current_stock <= 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                        ({m.current_stock} {m.unit})
+                            <div className="flex items-center gap-2">
+                              {insufficientStock && (
+                                <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                              )}
+                              <Select
+                                value={item.material_name}
+                                onValueChange={(value) => handleMaterialSelect(item.id, value)}
+                              >
+                                <SelectTrigger className={insufficientStock ? 'border-amber-400' : ''}>
+                                  <SelectValue placeholder="Select material" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background border shadow-lg z-50">
+                                  {materials.map((m) => (
+                                    <SelectItem key={m.id} value={m.name}>
+                                      <span className="flex items-center gap-2">
+                                        {m.name}
+                                        <span className={`text-xs ${m.current_stock <= 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                          ({m.current_stock} {m.unit})
+                                        </span>
                                       </span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </td>
                           <td className="py-2 px-2">
                             <Input
@@ -875,6 +925,7 @@ export default function CreateOrder() {
                                 updateDeduction(item.id, 'quantity', e.target.value)
                               }
                               placeholder="0"
+                              className={insufficientStock ? 'border-amber-400' : ''}
                             />
                           </td>
                           <td className="py-2 px-2">
@@ -902,17 +953,24 @@ export default function CreateOrder() {
                             </Button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-4">
-                  {deductions.map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4 space-y-3 border-destructive/30">
+                  {deductions.map((item) => {
+                    const insufficientStock = hasInsufficientStock(item.material_name, item.quantity);
+                    return (
+                    <div key={item.id} className={`border rounded-lg p-4 space-y-3 ${insufficientStock ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' : 'border-destructive/30'}`}>
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-destructive">Deduction</span>
+                        <span className="font-medium text-destructive flex items-center gap-2">
+                          {insufficientStock && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+                          Deduction
+                          {insufficientStock && <span className="text-xs text-amber-600">(Low stock)</span>}
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"
@@ -926,7 +984,7 @@ export default function CreateOrder() {
                         value={item.material_name}
                         onValueChange={(value) => handleMaterialSelect(item.id, value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className={insufficientStock ? 'border-amber-400' : ''}>
                           <SelectValue placeholder="Select material" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border shadow-lg z-50">
@@ -953,6 +1011,7 @@ export default function CreateOrder() {
                               updateDeduction(item.id, 'quantity', e.target.value)
                             }
                             placeholder="0"
+                            className={insufficientStock ? 'border-amber-400' : ''}
                           />
                         </div>
                         <div>
@@ -972,7 +1031,8 @@ export default function CreateOrder() {
                         -{formatCurrency(item.amount)}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1018,6 +1078,48 @@ export default function CreateOrder() {
             </AlertDialogCancel>
             <AlertDialogAction onClick={confirmOrderNumber}>
               Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Stock Warning Confirmation Dialog */}
+      <AlertDialog open={showStockWarningConfirm} onOpenChange={setShowStockWarningConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Insufficient Stock Warning
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>The following materials have insufficient stock:</p>
+              <ul className="list-none space-y-2">
+                {stockWarnings.map((w, idx) => (
+                  <li key={idx} className="bg-amber-50 dark:bg-amber-950/20 p-2 rounded-md border border-amber-200 dark:border-amber-800">
+                    <span className="font-medium text-foreground">{w.material}</span>
+                    <br />
+                    <span className="text-sm">
+                      Requested: <strong className="text-destructive">{w.requested} {w.unit}</strong> | 
+                      Available: <strong className="text-green-600">{w.available} {w.unit}</strong>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm font-medium">Do you want to proceed anyway? Stock will go negative.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowStockWarningConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                setShowStockWarningConfirm(false);
+                handleSubmit(e as unknown as React.FormEvent, true);
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Proceed Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
