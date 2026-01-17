@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { ArrowDownCircle, ArrowUpCircle, History, Download, Calendar } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, History, Download, Calendar, Pencil, Loader2 } from 'lucide-react';
 
 interface Material {
   id: string;
@@ -80,6 +80,9 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [editOpeningStockDialogOpen, setEditOpeningStockDialogOpen] = useState(false);
+  const [newOpeningStock, setNewOpeningStock] = useState('');
+  const [savingOpeningStock, setSavingOpeningStock] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -152,6 +155,91 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
     });
   };
 
+  const handleOpenEditOpeningStock = () => {
+    setNewOpeningStock((material.opening_stock || 0).toString());
+    setEditOpeningStockDialogOpen(true);
+  };
+
+  const handleSaveOpeningStock = async () => {
+    const newValue = parseFloat(newOpeningStock);
+    if (isNaN(newValue) || newValue < 0) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid opening stock value',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingOpeningStock(true);
+    try {
+      const oldOpeningStock = material.opening_stock || 0;
+      const stockDifference = newValue - oldOpeningStock;
+
+      // Update the material's opening_stock and adjust current_stock accordingly
+      const newCurrentStock = material.current_stock + stockDifference;
+
+      const { error: updateError } = await supabase
+        .from('materials')
+        .update({
+          opening_stock: newValue,
+          current_stock: newCurrentStock,
+        })
+        .eq('id', material.id);
+
+      if (updateError) throw updateError;
+
+      // Check if there's already an opening_stock transaction for this material
+      const { data: existingOpeningTx } = await supabase
+        .from('stock_transactions')
+        .select('id, quantity')
+        .eq('material_id', material.id)
+        .eq('source_type', 'opening_stock')
+        .maybeSingle();
+
+      if (existingOpeningTx) {
+        // Update existing opening stock transaction
+        await supabase
+          .from('stock_transactions')
+          .update({
+            quantity: newValue,
+            balance_after: newValue,
+            remarks: `Opening stock updated from ${oldOpeningStock} to ${newValue}`,
+          })
+          .eq('id', existingOpeningTx.id);
+      } else if (newValue > 0) {
+        // Create new opening stock transaction
+        await supabase.from('stock_transactions').insert({
+          material_id: material.id,
+          transaction_type: 'in',
+          quantity: newValue,
+          transaction_date: new Date().toISOString().split('T')[0],
+          source_type: 'opening_stock',
+          balance_after: newValue,
+          remarks: 'Opening stock entry',
+        });
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Opening stock updated successfully',
+      });
+
+      setEditOpeningStockDialogOpen(false);
+      fetchTransactions();
+      onStockUpdated();
+    } catch (error) {
+      console.error('Error updating opening stock:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update opening stock',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingOpeningStock(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -160,13 +248,78 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
             <History className="h-5 w-5 text-primary" />
             Material Ledger: {material.name}
           </DialogTitle>
-          <DialogDescription>
-            Current Stock: <span className="font-semibold text-foreground">{material.current_stock} {material.unit}</span>
-            {material.opening_stock !== undefined && (
-              <span className="ml-4">Opening Stock: <span className="font-semibold">{material.opening_stock} {material.unit}</span></span>
-            )}
+        <DialogDescription className="flex flex-wrap items-center gap-2">
+            <span>Current Stock: <span className="font-semibold text-foreground">{material.current_stock} {material.unit}</span></span>
+            <span className="text-muted-foreground">•</span>
+            <span className="flex items-center gap-1">
+              Opening Stock: <span className="font-semibold">{material.opening_stock || 0} {material.unit}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={handleOpenEditOpeningStock}
+                title="Edit Opening Stock"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </span>
           </DialogDescription>
         </DialogHeader>
+
+        {/* Edit Opening Stock Dialog */}
+        <Dialog open={editOpeningStockDialogOpen} onOpenChange={setEditOpeningStockDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-display">Edit Opening Stock</DialogTitle>
+              <DialogDescription>
+                Update the opening stock for {material.name}. This will adjust the current stock accordingly.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="opening-stock">Opening Stock ({material.unit})</Label>
+                <Input
+                  id="opening-stock"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newOpeningStock}
+                  onChange={(e) => setNewOpeningStock(e.target.value)}
+                  placeholder="Enter opening stock"
+                />
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 text-sm space-y-1">
+                <p><span className="text-muted-foreground">Current Opening Stock:</span> {material.opening_stock || 0} {material.unit}</p>
+                <p><span className="text-muted-foreground">Current Stock:</span> {material.current_stock} {material.unit}</p>
+                {newOpeningStock && !isNaN(parseFloat(newOpeningStock)) && (
+                  <>
+                    <hr className="my-2 border-border" />
+                    <p className="font-medium">
+                      <span className="text-muted-foreground">New Current Stock:</span>{' '}
+                      {(material.current_stock + (parseFloat(newOpeningStock) - (material.opening_stock || 0))).toFixed(2)} {material.unit}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditOpeningStockDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveOpeningStock} disabled={savingOpeningStock} className="gradient-primary border-0">
+                {savingOpeningStock ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Date Filters */}
         <div className="flex flex-wrap items-end gap-4 p-4 bg-muted/30 rounded-lg">
