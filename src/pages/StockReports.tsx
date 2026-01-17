@@ -205,9 +205,10 @@ export default function StockReports() {
 
       (data || []).forEach((tx) => {
         if (summary[tx.material_id]) {
-          if (tx.transaction_type === 'add') {
+          // Handle both 'add'/'in' for stock in and 'reduce'/'out' for stock out
+          if (tx.transaction_type === 'add' || tx.transaction_type === 'in') {
             summary[tx.material_id].total_in += tx.quantity;
-          } else {
+          } else if (tx.transaction_type === 'reduce' || tx.transaction_type === 'out') {
             summary[tx.material_id].total_out += tx.quantity;
           }
         }
@@ -244,9 +245,10 @@ export default function StockReports() {
             partyData[tx.party_id!].materials.push(material);
           }
 
-          if (tx.transaction_type === 'add') {
+          // Handle both 'add'/'in' for stock in and 'reduce'/'out' for stock out
+          if (tx.transaction_type === 'add' || tx.transaction_type === 'in') {
             material.total_received += tx.quantity;
-          } else {
+          } else if (tx.transaction_type === 'reduce' || tx.transaction_type === 'out') {
             material.total_used += tx.quantity;
           }
           material.balance = material.total_received - material.total_used;
@@ -284,9 +286,11 @@ export default function StockReports() {
     } else if (type === 'detailed') {
       csvContent = 'Date,Material,Type,In,Out,Balance,Source/Reason,Party,Order,Remarks\n';
       transactions.forEach((tx) => {
-        csvContent += `${tx.transaction_date},"${tx.materials?.name}",${tx.transaction_type === 'add' ? 'IN' : 'OUT'},`;
-        csvContent += `${tx.transaction_type === 'add' ? tx.quantity : ''},`;
-        csvContent += `${tx.transaction_type === 'reduce' ? tx.quantity : ''},`;
+        const isIn = tx.transaction_type === 'add' || tx.transaction_type === 'in';
+        const isOut = tx.transaction_type === 'reduce' || tx.transaction_type === 'out';
+        csvContent += `${tx.transaction_date},"${tx.materials?.name}",${isIn ? 'IN' : 'OUT'},`;
+        csvContent += `${isIn ? tx.quantity : ''},`;
+        csvContent += `${isOut ? tx.quantity : ''},`;
         csvContent += `${tx.balance_after || ''},`;
         csvContent += `"${tx.source_type ? SOURCE_LABELS[tx.source_type] : tx.reason_type ? REASON_LABELS[tx.reason_type] : ''}",`;
         csvContent += `"${tx.parties?.name || ''}",`;

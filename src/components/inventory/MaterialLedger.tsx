@@ -117,25 +117,29 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
     }
   };
 
+  // Helper to check transaction type - handles both 'add'/'in' and 'reduce'/'out' conventions
+  const isStockIn = (type: string) => type === 'add' || type === 'in';
+  const isStockOut = (type: string) => type === 'reduce' || type === 'out';
+
   // Calculate running balance from opening stock
   const transactionsWithBalance = transactions.reduce((acc, tx, index) => {
     const prevBalance = index === 0 ? (material.opening_stock || 0) : acc[index - 1].balance;
-    const balance = tx.transaction_type === 'add' 
+    const balance = isStockIn(tx.transaction_type) 
       ? prevBalance + tx.quantity 
       : prevBalance - tx.quantity;
     acc.push({ ...tx, balance });
     return acc;
   }, [] as (StockTransaction & { balance: number })[]);
 
-  const totalIn = transactions.filter(tx => tx.transaction_type === 'add').reduce((sum, tx) => sum + tx.quantity, 0);
-  const totalOut = transactions.filter(tx => tx.transaction_type === 'reduce').reduce((sum, tx) => sum + tx.quantity, 0);
+  const totalIn = transactions.filter(tx => isStockIn(tx.transaction_type)).reduce((sum, tx) => sum + tx.quantity, 0);
+  const totalOut = transactions.filter(tx => isStockOut(tx.transaction_type)).reduce((sum, tx) => sum + tx.quantity, 0);
 
   const exportToCSV = () => {
     let csvContent = 'Date,Type,In,Out,Balance,Source/Reason,Party,Order No,Remarks\n';
     transactionsWithBalance.forEach((tx) => {
-      csvContent += `${tx.transaction_date},${tx.transaction_type === 'add' ? 'IN' : 'OUT'},`;
-      csvContent += `${tx.transaction_type === 'add' ? tx.quantity : ''},`;
-      csvContent += `${tx.transaction_type === 'reduce' ? tx.quantity : ''},`;
+      csvContent += `${tx.transaction_date},${isStockIn(tx.transaction_type) ? 'IN' : 'OUT'},`;
+      csvContent += `${isStockIn(tx.transaction_type) ? tx.quantity : ''},`;
+      csvContent += `${isStockOut(tx.transaction_type) ? tx.quantity : ''},`;
       csvContent += `${tx.balance},`;
       csvContent += `"${tx.source_type ? SOURCE_LABELS[tx.source_type] : tx.reason_type ? REASON_LABELS[tx.reason_type] : ''}",`;
       csvContent += `"${tx.parties?.name || ''}",`;
