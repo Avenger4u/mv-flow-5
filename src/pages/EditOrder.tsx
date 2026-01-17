@@ -321,20 +321,26 @@ export default function EditOrder() {
               .maybeSingle();
 
             if (material) {
-              // Create stock-in transaction to restore stock
+              const newBalance = material.current_stock + d.quantity;
+              
+              // Create stock-in transaction to restore stock with full details
               await supabase.from('stock_transactions').insert({
                 material_id: material.id,
                 transaction_type: 'in',
                 quantity: d.quantity,
                 order_id: id,
                 order_number: orderNumber,
+                party_id: partyId || null,
+                transaction_date: orderDate,
+                source_type: 'adjustment',
+                balance_after: newBalance,
                 remarks: `Restored from deleted deduction in order ${orderNumber}`,
               });
 
               // Update current stock
               await supabase
                 .from('materials')
-                .update({ current_stock: material.current_stock + d.quantity })
+                .update({ current_stock: newBalance })
                 .eq('id', material.id);
             }
           }
@@ -365,18 +371,27 @@ export default function EditOrder() {
             .maybeSingle();
 
           if (material) {
+            const qty = parseFloat(d.quantity);
+            const rate = parseFloat(d.rate) || 0;
+            const newBalance = material.current_stock - qty;
+            
             await supabase.from('stock_transactions').insert({
               material_id: material.id,
               transaction_type: 'out',
-              quantity: parseFloat(d.quantity),
+              quantity: qty,
+              rate: rate,
               order_id: id,
               order_number: orderNumber,
+              party_id: partyId || null,
+              transaction_date: orderDate,
+              reason_type: 'used_in_order',
+              balance_after: newBalance,
               remarks: `Used in order ${orderNumber}`,
             });
 
             await supabase
               .from('materials')
-              .update({ current_stock: material.current_stock - parseFloat(d.quantity) })
+              .update({ current_stock: newBalance })
               .eq('id', material.id);
           }
         } else {

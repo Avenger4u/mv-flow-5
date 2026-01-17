@@ -435,6 +435,7 @@ export default function CreateOrder() {
           for (const d of validDeductions) {
             const materialName = d.material_name.trim();
             const qty = parseFloat(d.quantity);
+            const rate = parseFloat(d.rate) || 0;
 
             // Find material by name
             const { data: material } = await supabase
@@ -444,20 +445,27 @@ export default function CreateOrder() {
               .maybeSingle();
 
             if (material) {
-              // Create stock transaction
+              const newBalance = material.current_stock - qty;
+              
+              // Create stock transaction with full details
               await supabase.from('stock_transactions').insert({
                 material_id: material.id,
                 transaction_type: 'out',
                 quantity: qty,
+                rate: rate,
                 order_id: order.id,
                 order_number: finalOrderNumber,
+                party_id: finalPartyId,
+                transaction_date: orderDate,
+                reason_type: 'used_in_order',
+                balance_after: newBalance,
                 remarks: `Used in order ${finalOrderNumber}`,
               });
 
               // Update current stock
               await supabase
                 .from('materials')
-                .update({ current_stock: material.current_stock - qty })
+                .update({ current_stock: newBalance })
                 .eq('id', material.id);
             }
           }
