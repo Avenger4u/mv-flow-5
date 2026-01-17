@@ -147,6 +147,47 @@ export type Database = {
           },
         ]
       }
+      order_templates: {
+        Row: {
+          created_at: string
+          deductions: Json
+          id: string
+          items: Json
+          name: string
+          notes: string | null
+          party_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deductions?: Json
+          id?: string
+          items?: Json
+          name: string
+          notes?: string | null
+          party_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deductions?: Json
+          id?: string
+          items?: Json
+          name?: string
+          notes?: string | null
+          party_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_templates_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string

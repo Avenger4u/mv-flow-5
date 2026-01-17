@@ -45,8 +45,6 @@ interface Material {
   id: string;
   name: string;
   unit: string;
-  current_stock: number;
-  opening_stock: number;
 }
 
 interface Party {
@@ -114,10 +112,15 @@ const REASON_LABELS: Record<string, string> = {
   adjustment: 'Adjustment',
 };
 
+// Helper to check transaction type - handles both 'add'/'in' and 'reduce'/'out' conventions
+const isStockIn = (type: string) => type === 'add' || type === 'in';
+const isStockOut = (type: string) => type === 'reduce' || type === 'out';
+
 export default function StockReports() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [transactions, setTransactions] = useState<StockTransaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<StockTransaction[]>([]);
   const [materialSummary, setMaterialSummary] = useState<MaterialSummary[]>([]);
   const [partySummary, setPartySummary] = useState<PartySummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +145,7 @@ export default function StockReports() {
   const fetchInitialData = async () => {
     try {
       const [materialsRes, partiesRes] = await Promise.all([
-        supabase.from('materials').select('id, name, unit, current_stock, opening_stock').order('name'),
+        supabase.from('materials').select('id, name, unit').order('name'),
         supabase.from('parties').select('id, name').order('name'),
       ]);
 
@@ -165,60 +168,82 @@ export default function StockReports() {
 
   const fetchReports = async () => {
     try {
-      let query = supabase
+      // Fetch ALL transactions for opening stock calculation (before start date)
+      let allTxQuery = supabase
         .from('stock_transactions')
         .select('*, materials(name, unit), parties(name)')
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('transaction_date', { ascending: true })
+        .order('created_at', { ascending: true });
 
       if (selectedMaterial !== 'all') {
-        query = query.eq('material_id', selectedMaterial);
+        allTxQuery = allTxQuery.eq('material_id', selectedMaterial);
       }
 
-      if (selectedParty !== 'all') {
-        query = query.eq('party_id', selectedParty);
-      }
+      const { data: allTxData, error: allTxError } = await allTxQuery;
+      if (allTxError) throw allTxError;
 
-      const { data, error } = await query;
+      setAllTransactions(allTxData || []);
 
-      if (error) throw error;
+      // Filter transactions within the selected date range
+      let filteredTx = (allTxData || []).filter(tx => {
+        const txDate = tx.transaction_date;
+        const inDateRange = txDate >= startDate && txDate <= endDate;
+        const matchesParty = selectedParty === 'all' || tx.party_id === selectedParty;
+        return inDateRange && matchesParty;
+      });
 
-      setTransactions(data || []);
+      setTransactions(filteredTx);
 
-      // Calculate material summary
+      // Calculate material summary from ledger entries
       const summary: Record<string, MaterialSummary> = {};
+      
+      // Initialize summary for all materials (or selected material)
       materials.forEach((m) => {
         if (selectedMaterial === 'all' || selectedMaterial === m.id) {
           summary[m.id] = {
             material_id: m.id,
             material_name: m.name,
             unit: m.unit,
-            opening_stock: m.opening_stock,
+            opening_stock: 0,
             total_in: 0,
             total_out: 0,
-            closing_stock: m.current_stock,
+            closing_stock: 0,
           };
         }
       });
 
-      (data || []).forEach((tx) => {
+      // Calculate opening stock from all transactions BEFORE start date
+      (allTxData || []).forEach((tx) => {
+        if (summary[tx.material_id] && tx.transaction_date < startDate) {
+          if (isStockIn(tx.transaction_type)) {
+            summary[tx.material_id].opening_stock += tx.quantity;
+          } else if (isStockOut(tx.transaction_type)) {
+            summary[tx.material_id].opening_stock -= tx.quantity;
+          }
+        }
+      });
+
+      // Calculate In/Out within the date range
+      filteredTx.forEach((tx) => {
         if (summary[tx.material_id]) {
-          // Handle both 'add'/'in' for stock in and 'reduce'/'out' for stock out
-          if (tx.transaction_type === 'add' || tx.transaction_type === 'in') {
+          if (isStockIn(tx.transaction_type)) {
             summary[tx.material_id].total_in += tx.quantity;
-          } else if (tx.transaction_type === 'reduce' || tx.transaction_type === 'out') {
+          } else if (isStockOut(tx.transaction_type)) {
             summary[tx.material_id].total_out += tx.quantity;
           }
         }
+      });
+
+      // Calculate closing stock: Opening + In - Out
+      Object.values(summary).forEach((m) => {
+        m.closing_stock = m.opening_stock + m.total_in - m.total_out;
       });
 
       setMaterialSummary(Object.values(summary));
 
       // Calculate party summary
       const partyData: Record<string, PartySummary> = {};
-      (data || [])
+      filteredTx
         .filter((tx) => tx.party_id)
         .forEach((tx) => {
           const partyName = tx.parties?.name || 'Unknown';
@@ -245,10 +270,9 @@ export default function StockReports() {
             partyData[tx.party_id!].materials.push(material);
           }
 
-          // Handle both 'add'/'in' for stock in and 'reduce'/'out' for stock out
-          if (tx.transaction_type === 'add' || tx.transaction_type === 'in') {
+          if (isStockIn(tx.transaction_type)) {
             material.total_received += tx.quantity;
-          } else if (tx.transaction_type === 'reduce' || tx.transaction_type === 'out') {
+          } else if (isStockOut(tx.transaction_type)) {
             material.total_used += tx.quantity;
           }
           material.balance = material.total_received - material.total_used;
@@ -272,26 +296,44 @@ export default function StockReports() {
     if (type === 'material') {
       csvContent = 'Material,Unit,Opening Stock,Stock In,Stock Out,Closing Stock\n';
       materialSummary.forEach((m) => {
-        csvContent += `"${m.material_name}",${m.unit},${m.opening_stock},${m.total_in},${m.total_out},${m.closing_stock}\n`;
+        csvContent += `"${m.material_name}",${m.unit},${m.opening_stock.toFixed(2)},${m.total_in.toFixed(2)},${m.total_out.toFixed(2)},${m.closing_stock.toFixed(2)}\n`;
       });
       filename = `material-wise-report-${startDate}-to-${endDate}.csv`;
     } else if (type === 'party') {
       csvContent = 'Party,Material,Unit,Received,Used,Balance\n';
       partySummary.forEach((p) => {
         p.materials.forEach((m) => {
-          csvContent += `"${p.party_name}","${m.material_name}",${m.unit},${m.total_received},${m.total_used},${m.balance}\n`;
+          csvContent += `"${p.party_name}","${m.material_name}",${m.unit},${m.total_received.toFixed(2)},${m.total_used.toFixed(2)},${m.balance.toFixed(2)}\n`;
         });
       });
       filename = `party-wise-report-${startDate}-to-${endDate}.csv`;
     } else if (type === 'detailed') {
       csvContent = 'Date,Material,Type,In,Out,Balance,Source/Reason,Party,Order,Remarks\n';
-      transactions.forEach((tx) => {
-        const isIn = tx.transaction_type === 'add' || tx.transaction_type === 'in';
-        const isOut = tx.transaction_type === 'reduce' || tx.transaction_type === 'out';
-        csvContent += `${tx.transaction_date},"${tx.materials?.name}",${isIn ? 'IN' : 'OUT'},`;
-        csvContent += `${isIn ? tx.quantity : ''},`;
-        csvContent += `${isOut ? tx.quantity : ''},`;
-        csvContent += `${tx.balance_after || ''},`;
+      
+      // Calculate running balance for detailed ledger
+      const sortedTx = [...transactions].sort((a, b) => {
+        if (a.transaction_date !== b.transaction_date) {
+          return a.transaction_date.localeCompare(b.transaction_date);
+        }
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+
+      // Group by material and calculate balance
+      const materialBalances: Record<string, number> = {};
+      materialSummary.forEach(m => {
+        materialBalances[m.material_id] = m.opening_stock;
+      });
+
+      sortedTx.forEach((tx) => {
+        const balance = isStockIn(tx.transaction_type)
+          ? (materialBalances[tx.material_id] || 0) + tx.quantity
+          : (materialBalances[tx.material_id] || 0) - tx.quantity;
+        materialBalances[tx.material_id] = balance;
+
+        csvContent += `${tx.transaction_date},"${tx.materials?.name}",${isStockIn(tx.transaction_type) ? 'IN' : 'OUT'},`;
+        csvContent += `${isStockIn(tx.transaction_type) ? tx.quantity.toFixed(2) : ''},`;
+        csvContent += `${isStockOut(tx.transaction_type) ? tx.quantity.toFixed(2) : ''},`;
+        csvContent += `${balance.toFixed(2)},`;
         csvContent += `"${tx.source_type ? SOURCE_LABELS[tx.source_type] : tx.reason_type ? REASON_LABELS[tx.reason_type] : ''}",`;
         csvContent += `"${tx.parties?.name || ''}",`;
         csvContent += `"${tx.order_number || ''}",`;
@@ -302,7 +344,7 @@ export default function StockReports() {
       const orderTransactions = transactions.filter((tx) => tx.order_number);
       csvContent = 'Order No,Date,Material,Quantity,Unit,Remarks\n';
       orderTransactions.forEach((tx) => {
-        csvContent += `"${tx.order_number}",${tx.transaction_date},"${tx.materials?.name}",${tx.quantity},${tx.materials?.unit},"${tx.remarks || ''}"\n`;
+        csvContent += `"${tx.order_number}",${tx.transaction_date},"${tx.materials?.name}",${tx.quantity.toFixed(2)},${tx.materials?.unit},"${tx.remarks || ''}"\n`;
       });
       filename = `order-wise-consumption-${startDate}-to-${endDate}.csv`;
     }
@@ -319,6 +361,30 @@ export default function StockReports() {
     });
   };
 
+  // Calculate running balance for detailed ledger display
+  const getTransactionsWithBalance = () => {
+    const sortedTx = [...transactions].sort((a, b) => {
+      if (a.transaction_date !== b.transaction_date) {
+        return a.transaction_date.localeCompare(b.transaction_date);
+      }
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
+    // Get opening balances for each material
+    const materialBalances: Record<string, number> = {};
+    materialSummary.forEach(m => {
+      materialBalances[m.material_id] = m.opening_stock;
+    });
+
+    return sortedTx.map(tx => {
+      const balance = isStockIn(tx.transaction_type)
+        ? (materialBalances[tx.material_id] || 0) + tx.quantity
+        : (materialBalances[tx.material_id] || 0) - tx.quantity;
+      materialBalances[tx.material_id] = balance;
+      return { ...tx, runningBalance: balance };
+    });
+  };
+
   if (loading) {
     return (
       <AppLayout>
@@ -331,6 +397,7 @@ export default function StockReports() {
 
   const totalStockIn = materialSummary.reduce((sum, m) => sum + m.total_in, 0);
   const totalStockOut = materialSummary.reduce((sum, m) => sum + m.total_out, 0);
+  const transactionsWithBalance = getTransactionsWithBalance();
 
   return (
     <AppLayout>
@@ -481,7 +548,7 @@ export default function StockReports() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Material-wise Summary</CardTitle>
-                  <CardDescription>Stock movement summary for each material</CardDescription>
+                  <CardDescription>Stock movement summary for each material (calculated from ledger)</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => exportToCSV('material')}>
                   <Download className="h-4 w-4 mr-2" />
@@ -513,14 +580,14 @@ export default function StockReports() {
                           <TableRow key={m.material_id}>
                             <TableCell className="font-medium">{m.material_name}</TableCell>
                             <TableCell>{m.unit}</TableCell>
-                            <TableCell className="text-right">{m.opening_stock}</TableCell>
+                            <TableCell className="text-right">{m.opening_stock.toFixed(2)}</TableCell>
                             <TableCell className="text-right text-green-600 font-medium">
-                              +{m.total_in}
+                              +{m.total_in.toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right text-red-600 font-medium">
-                              -{m.total_out}
+                              -{m.total_out.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right font-bold">{m.closing_stock}</TableCell>
+                            <TableCell className="text-right font-bold">{m.closing_stock.toFixed(2)}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -575,13 +642,13 @@ export default function StockReports() {
                                 <TableCell className="font-medium">{m.material_name}</TableCell>
                                 <TableCell>{m.unit}</TableCell>
                                 <TableCell className="text-right text-green-600">
-                                  +{m.total_received}
+                                  +{m.total_received.toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-right text-red-600">
-                                  -{m.total_used}
+                                  -{m.total_used.toFixed(2)}
                                 </TableCell>
                                 <TableCell className={`text-right font-bold ${m.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {m.balance}
+                                  {m.balance.toFixed(2)}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -638,7 +705,7 @@ export default function StockReports() {
                               <TableCell>{format(new Date(tx.transaction_date), 'dd MMM yyyy')}</TableCell>
                               <TableCell>{tx.materials?.name}</TableCell>
                               <TableCell className="text-right text-red-600 font-medium">
-                                -{tx.quantity} {tx.materials?.unit}
+                                -{tx.quantity.toFixed(2)} {tx.materials?.unit}
                               </TableCell>
                               <TableCell className="text-muted-foreground">{tx.remarks || '—'}</TableCell>
                             </TableRow>
@@ -657,7 +724,7 @@ export default function StockReports() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Detailed Stock Ledger</CardTitle>
-                  <CardDescription>Complete transaction history</CardDescription>
+                  <CardDescription>Complete transaction history with running balance</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => exportToCSV('detailed')}>
                   <Download className="h-4 w-4 mr-2" />
@@ -682,22 +749,22 @@ export default function StockReports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transactions.length === 0 ? (
+                      {transactionsWithBalance.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             No transactions for selected period
                           </TableCell>
                         </TableRow>
                       ) : (
-                        transactions.map((tx) => (
+                        transactionsWithBalance.map((tx) => (
                           <TableRow key={tx.id}>
                             <TableCell className="whitespace-nowrap">
                               {format(new Date(tx.transaction_date), 'dd MMM yyyy')}
                             </TableCell>
                             <TableCell className="font-medium">{tx.materials?.name}</TableCell>
                             <TableCell>
-                              <Badge variant={tx.transaction_type === 'add' ? 'default' : 'destructive'}>
-                                {tx.transaction_type === 'add' ? (
+                              <Badge variant={isStockIn(tx.transaction_type) ? 'default' : 'destructive'}>
+                                {isStockIn(tx.transaction_type) ? (
                                   <span className="flex items-center gap-1">
                                     <ArrowDownCircle className="h-3 w-3" /> IN
                                   </span>
@@ -709,13 +776,13 @@ export default function StockReports() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right text-green-600 font-medium">
-                              {tx.transaction_type === 'add' ? `+${tx.quantity}` : ''}
+                              {isStockIn(tx.transaction_type) ? `+${tx.quantity.toFixed(2)}` : ''}
                             </TableCell>
                             <TableCell className="text-right text-red-600 font-medium">
-                              {tx.transaction_type === 'reduce' ? `-${tx.quantity}` : ''}
+                              {isStockOut(tx.transaction_type) ? `-${tx.quantity.toFixed(2)}` : ''}
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {tx.balance_after ?? '—'}
+                              {tx.runningBalance.toFixed(2)}
                             </TableCell>
                             <TableCell>
                               {tx.source_type
