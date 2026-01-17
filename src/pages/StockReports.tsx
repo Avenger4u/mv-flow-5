@@ -114,8 +114,15 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 // Helper to check transaction type - handles both 'add'/'in' and 'reduce'/'out' conventions
-const isStockIn = (type: string) => type === 'add' || type === 'in';
-const isStockOut = (type: string) => type === 'reduce' || type === 'out';
+const normalizeTxType = (type: string) => (type || '').toLowerCase().trim();
+const isStockIn = (type: string) => {
+  const t = normalizeTxType(type);
+  return t === 'add' || t === 'in' || t === 'stock_in' || t === 'stockin';
+};
+const isStockOut = (type: string) => {
+  const t = normalizeTxType(type);
+  return t === 'reduce' || t === 'out' || t === 'stock_out' || t === 'stockout';
+};
 
 export default function StockReports() {
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -126,6 +133,7 @@ export default function StockReports() {
   const [partySummary, setPartySummary] = useState<PartySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [initializingLedger, setInitializingLedger] = useState(false);
   const { toast } = useToast();
 
   // Filters
@@ -180,6 +188,30 @@ export default function StockReports() {
   
   const handleRefresh = () => {
     fetchInitialData(true);
+  };
+
+  const handleInitializeLedger = async () => {
+    setInitializingLedger(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('init-stock-ledger');
+      if (error) throw error;
+
+      toast({
+        title: 'Ledger Initialized',
+        description: `${data?.inserted || 0} opening balance entries created`,
+      });
+
+      await fetchReports();
+    } catch (error) {
+      console.error('Error initializing ledger:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to initialize ledger',
+        variant: 'destructive',
+      });
+    } finally {
+      setInitializingLedger(false);
+    }
   };
 
   const fetchReports = async () => {
@@ -428,15 +460,27 @@ export default function StockReports() {
               Comprehensive stock movement and ledger reports
             </p>
           </div>
-          <Button 
-            onClick={handleRefresh} 
-            disabled={refreshing}
-            variant="outline"
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh Reports'}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            {allTransactions.length === 0 && (
+              <Button
+                onClick={handleInitializeLedger}
+                disabled={initializingLedger || refreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${initializingLedger ? 'animate-spin' : ''}`} />
+                {initializingLedger ? 'Initializing…' : 'Initialize Ledger'}
+              </Button>
+            )}
+            <Button 
+              onClick={handleRefresh} 
+              disabled={refreshing || initializingLedger}
+              variant="outline"
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh Reports'}
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
