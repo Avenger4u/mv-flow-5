@@ -63,7 +63,7 @@ serve(async (req) => {
       .filter((m) => (m.current_stock ?? 0) > 0)
       .map((m) => ({
         material_id: m.id,
-        transaction_type: "in",
+        transaction_type: "add",  // use 'add' which is allowed by check constraint
         quantity: m.current_stock,
         transaction_date: snapshotDate,
         source_type: "opening_stock",
