@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowDownCircle, ArrowUpCircle, Save } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Save, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Material {
@@ -35,6 +35,17 @@ interface Material {
 interface Party {
   id: string;
   name: string;
+}
+
+interface LastEntry {
+  type: 'in' | 'out';
+  material_id: string;
+  quantity: string;
+  source_type?: string;
+  reason_type?: string;
+  party_id?: string;
+  rate?: string;
+  remarks?: string;
 }
 
 const STOCK_IN_SOURCES = [
@@ -59,6 +70,7 @@ export default function StockEntry() {
   const [parties, setParties] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [lastEntry, setLastEntry] = useState<LastEntry | null>(null);
   const { toast } = useToast();
 
   // Stock In Form State
@@ -110,6 +122,46 @@ export default function StockEntry() {
     }
   };
 
+  const handleRepeatLastEntry = () => {
+    if (!lastEntry) {
+      toast({
+        title: 'No Previous Entry',
+        description: 'Make a stock entry first to use the repeat feature',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (lastEntry.type === 'in') {
+      setStockInData({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        material_id: lastEntry.material_id,
+        quantity: lastEntry.quantity,
+        source_type: lastEntry.source_type || '',
+        party_id: lastEntry.party_id || '',
+        rate: lastEntry.rate || '',
+        remarks: lastEntry.remarks || '',
+      });
+      toast({
+        title: 'Entry Repeated',
+        description: 'Stock In form has been pre-filled with last entry',
+      });
+    } else {
+      setStockOutData({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        material_id: lastEntry.material_id,
+        quantity: lastEntry.quantity,
+        reason_type: lastEntry.reason_type || '',
+        order_number: '',
+        remarks: lastEntry.remarks || '',
+      });
+      toast({
+        title: 'Entry Repeated',
+        description: 'Stock Out form has been pre-filled with last entry',
+      });
+    }
+  };
+
   const handleStockIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -157,10 +209,10 @@ export default function StockEntry() {
 
       if (updateError) throw updateError;
 
-      // Create transaction record
+      // Create transaction record with 'in' type for consistency
       const { error: transactionError } = await supabase.from('stock_transactions').insert({
         material_id: stockInData.material_id,
-        transaction_type: 'add',
+        transaction_type: 'in',
         quantity: qty,
         transaction_date: stockInData.date,
         source_type: stockInData.source_type,
@@ -171,6 +223,17 @@ export default function StockEntry() {
       });
 
       if (transactionError) throw transactionError;
+
+      // Save as last entry for repeat feature
+      setLastEntry({
+        type: 'in',
+        material_id: stockInData.material_id,
+        quantity: stockInData.quantity,
+        source_type: stockInData.source_type,
+        party_id: stockInData.source_type === 'party_supply' ? stockInData.party_id : undefined,
+        rate: stockInData.rate,
+        remarks: stockInData.remarks,
+      });
 
       toast({
         title: 'Success',
@@ -256,10 +319,10 @@ export default function StockEntry() {
 
       if (updateError) throw updateError;
 
-      // Create transaction record
+      // Create transaction record with 'out' type for consistency
       const { error: transactionError } = await supabase.from('stock_transactions').insert({
         material_id: stockOutData.material_id,
-        transaction_type: 'reduce',
+        transaction_type: 'out',
         quantity: qty,
         transaction_date: stockOutData.date,
         reason_type: stockOutData.reason_type,
@@ -269,6 +332,15 @@ export default function StockEntry() {
       });
 
       if (transactionError) throw transactionError;
+
+      // Save as last entry for repeat feature
+      setLastEntry({
+        type: 'out',
+        material_id: stockOutData.material_id,
+        quantity: stockOutData.quantity,
+        reason_type: stockOutData.reason_type,
+        remarks: stockOutData.remarks,
+      });
 
       toast({
         title: 'Success',
@@ -316,13 +388,21 @@ export default function StockEntry() {
     <AppLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-            Stock Entry
-          </h1>
-          <p className="text-muted-foreground">
-            Record stock movements with proper documentation
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+              Stock Entry
+            </h1>
+            <p className="text-muted-foreground">
+              Record stock movements with proper documentation
+            </p>
+          </div>
+          {lastEntry && (
+            <Button variant="outline" onClick={handleRepeatLastEntry}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Repeat Last Entry
+            </Button>
+          )}
         </div>
 
         <Tabs defaultValue="stock-in" className="space-y-6">
@@ -476,10 +556,18 @@ export default function StockEntry() {
                     </div>
                   )}
 
-                  <Button type="submit" disabled={saving} className="gradient-primary border-0">
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Stock In Entry'}
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button type="submit" disabled={saving} className="gradient-primary border-0">
+                      <Save className="h-4 w-4 mr-2" />
+                      {saving ? 'Saving...' : 'Save Stock In Entry'}
+                    </Button>
+                    {lastEntry?.type === 'in' && (
+                      <Button type="button" variant="outline" onClick={handleRepeatLastEntry}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Repeat Last
+                      </Button>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -612,14 +700,22 @@ export default function StockEntry() {
                     </div>
                   )}
 
-                  <Button
-                    type="submit"
-                    disabled={saving}
-                    variant="destructive"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Stock Out Entry'}
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      variant="destructive"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {saving ? 'Saving...' : 'Save Stock Out Entry'}
+                    </Button>
+                    {lastEntry?.type === 'out' && (
+                      <Button type="button" variant="outline" onClick={handleRepeatLastEntry}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Repeat Last
+                      </Button>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
