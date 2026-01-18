@@ -40,7 +40,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 
 interface Material {
   id: string;
@@ -121,7 +121,13 @@ const isStockIn = (type: string) => {
 };
 const isStockOut = (type: string) => {
   const t = normalizeTxType(type);
-  return t === 'reduce' || t === 'out' || t === 'stock_out' || t === 'stockout';
+  return (
+    t === 'reduce' ||
+    t === 'out' ||
+    t === 'order_deduction' ||
+    t === 'stock_out' ||
+    t === 'stockout'
+  );
 };
 
 export default function StockReports() {
@@ -134,11 +140,13 @@ export default function StockReports() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [initializingLedger, setInitializingLedger] = useState(false);
+  const [syncingOrderLedger, setSyncingOrderLedger] = useState(false);
+  const [needsOrderLedgerSync, setNeedsOrderLedgerSync] = useState(false);
   const { toast } = useToast();
 
-  // Filters
-  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  // Filters (default: include historical opening stock entries)
+  const [startDate, setStartDate] = useState('2000-01-01');
+  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedMaterial, setSelectedMaterial] = useState<string>('all');
   const [selectedParty, setSelectedParty] = useState<string>('all');
 
@@ -156,16 +164,27 @@ export default function StockReports() {
     try {
       if (showRefreshToast) setRefreshing(true);
       
-      const [materialsRes, partiesRes] = await Promise.all([
+      const [materialsRes, partiesRes, deductionsCountRes, orderTxCountRes] = await Promise.all([
         supabase.from('materials').select('id, name, unit').order('name'),
         supabase.from('parties').select('id, name').order('name'),
+        supabase.from('raw_material_deductions').select('id', { count: 'exact', head: true }),
+        supabase
+          .from('stock_transactions')
+          .select('id', { count: 'exact', head: true })
+          .not('order_id', 'is', null),
       ]);
 
       if (materialsRes.error) throw materialsRes.error;
       if (partiesRes.error) throw partiesRes.error;
+      if (deductionsCountRes.error) throw deductionsCountRes.error;
+      if (orderTxCountRes.error) throw orderTxCountRes.error;
 
       setMaterials(materialsRes.data || []);
       setParties(partiesRes.data || []);
+
+      const deductionsCount = deductionsCountRes.count || 0;
+      const orderTxCount = orderTxCountRes.count || 0;
+      setNeedsOrderLedgerSync(deductionsCount > 0 && orderTxCount === 0);
       
       if (showRefreshToast) {
         toast({
