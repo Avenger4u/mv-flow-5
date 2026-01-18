@@ -491,7 +491,7 @@ export default function CreateOrder() {
               const newBalance = material.current_stock - qty;
               
               // Create stock transaction with full details
-              await supabase.from('stock_transactions').insert({
+              const { error: txError } = await supabase.from('stock_transactions').insert({
                 material_id: material.id,
                 transaction_type: 'out',
                 quantity: qty,
@@ -504,12 +504,14 @@ export default function CreateOrder() {
                 balance_after: newBalance,
                 remarks: `Used in order ${finalOrderNumber}`,
               });
+              if (txError) throw txError;
 
               // Update current stock
-              await supabase
+              const { error: stockUpdateError } = await supabase
                 .from('materials')
                 .update({ current_stock: newBalance })
                 .eq('id', material.id);
+              if (stockUpdateError) throw stockUpdateError;
             }
           }
         }
