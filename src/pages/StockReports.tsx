@@ -449,23 +449,24 @@ export default function StockReports() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 md:space-y-6 animate-fade-in px-1 sm:px-0">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-foreground">
               Stock Reports
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Comprehensive stock movement and ledger reports
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="flex flex-wrap gap-2">
             {allTransactions.length === 0 && (
               <Button
                 onClick={handleInitializeLedger}
                 disabled={initializingLedger || refreshing}
-                className="gap-2"
+                className="gap-2 flex-1 sm:flex-none"
+                size="sm"
               >
                 <RefreshCw className={`h-4 w-4 ${initializingLedger ? 'animate-spin' : ''}`} />
                 {initializingLedger ? 'Initializing…' : 'Initialize Ledger'}
@@ -475,44 +476,47 @@ export default function StockReports() {
               onClick={handleRefresh} 
               disabled={refreshing || initializingLedger}
               variant="outline"
-              className="gap-2"
+              className="gap-2 flex-1 sm:flex-none"
+              size="sm"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh Reports'}
+              {refreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
         </div>
 
         {/* Filters */}
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               Report Filters
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Start Date</Label>
                 <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>End Date</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">End Date</Label>
                 <Input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  className="text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Material</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Material</Label>
                 <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm">
                     <SelectValue placeholder="All Materials" />
                   </SelectTrigger>
                   <SelectContent>
@@ -525,10 +529,10 @@ export default function StockReports() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Party</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Party</Label>
                 <Select value={selectedParty} onValueChange={setSelectedParty}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm">
                     <SelectValue placeholder="All Parties" />
                   </SelectTrigger>
                   <SelectContent>
@@ -546,42 +550,42 @@ export default function StockReports() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-green-500/10">
-                  <ArrowDownCircle className="h-6 w-6 text-green-500" />
+            <CardContent className="p-3 sm:pt-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-green-500/10 shrink-0">
+                  <ArrowDownCircle className="h-4 w-4 sm:h-6 sm:w-6 text-green-500" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Stock In</p>
-                  <p className="text-2xl font-bold text-green-600">{totalStockIn.toFixed(2)}</p>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Stock In</p>
+                  <p className="text-lg sm:text-2xl font-bold text-green-600">{totalStockIn.toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-red-500/10">
-                  <ArrowUpCircle className="h-6 w-6 text-red-500" />
+            <CardContent className="p-3 sm:pt-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-red-500/10 shrink-0">
+                  <ArrowUpCircle className="h-4 w-4 sm:h-6 sm:w-6 text-red-500" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Stock Out</p>
-                  <p className="text-2xl font-bold text-red-600">{totalStockOut.toFixed(2)}</p>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Stock Out</p>
+                  <p className="text-lg sm:text-2xl font-bold text-red-600">{totalStockOut.toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <Package className="h-6 w-6 text-primary" />
+            <CardContent className="p-3 sm:pt-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-primary/10 shrink-0">
+                  <Package className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Net Change</p>
-                  <p className={`text-2xl font-bold ${totalStockIn - totalStockOut >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Net Change</p>
+                  <p className={`text-lg sm:text-2xl font-bold ${totalStockIn - totalStockOut >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {totalStockIn - totalStockOut >= 0 ? '+' : ''}{(totalStockIn - totalStockOut).toFixed(2)}
                   </p>
                 </div>
@@ -592,71 +596,72 @@ export default function StockReports() {
 
         {/* Report Tabs */}
         <Tabs defaultValue="material-wise" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-            <TabsTrigger value="material-wise" className="gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Material-wise</span>
+          <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+            <TabsTrigger value="material-wise" className="gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm">
+              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Material</span>
             </TabsTrigger>
-            <TabsTrigger value="party-wise" className="gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Party-wise</span>
+            <TabsTrigger value="party-wise" className="gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Party</span>
             </TabsTrigger>
-            <TabsTrigger value="order-wise" className="gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Order-wise</span>
+            <TabsTrigger value="order-wise" className="gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm">
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Order</span>
             </TabsTrigger>
-            <TabsTrigger value="detailed" className="gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden sm:inline">Detailed Ledger</span>
+            <TabsTrigger value="detailed" className="gap-1 sm:gap-2 px-1 sm:px-3 py-2 text-xs sm:text-sm">
+              <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Ledger</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Material-wise Report */}
           <TabsContent value="material-wise">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4">
                 <div>
-                  <CardTitle>Material-wise Summary</CardTitle>
-                  <CardDescription>Stock movement summary for each material (calculated from ledger)</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">Material-wise Summary</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Stock movement summary for each material (calculated from ledger)</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => exportToCSV('material')}>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV('material')} className="w-full sm:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
               </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
+              <CardContent className="px-2 sm:px-6">
+                <div className="border rounded-lg overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Material</TableHead>
-                        <TableHead>Unit</TableHead>
-                        <TableHead className="text-right">Opening</TableHead>
-                        <TableHead className="text-right text-green-600">Stock In</TableHead>
-                        <TableHead className="text-right text-red-600">Stock Out</TableHead>
-                        <TableHead className="text-right">Closing</TableHead>
+                        <TableHead className="text-xs sm:text-sm whitespace-nowrap">Material</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right">Opening</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right text-green-600">In</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right text-red-600">Out</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right">Closing</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {materialSummary.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={5} className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
                             No data for selected period
                           </TableCell>
                         </TableRow>
                       ) : (
                         materialSummary.map((m) => (
                           <TableRow key={m.material_id}>
-                            <TableCell className="font-medium">{m.material_name}</TableCell>
-                            <TableCell>{m.unit}</TableCell>
-                            <TableCell className="text-right">{m.opening_stock.toFixed(2)}</TableCell>
-                            <TableCell className="text-right text-green-600 font-medium">
+                            <TableCell className="font-medium text-xs sm:text-sm">
+                              <div>{m.material_name}</div>
+                              <div className="text-xs text-muted-foreground">{m.unit}</div>
+                            </TableCell>
+                            <TableCell className="text-right text-xs sm:text-sm">{m.opening_stock.toFixed(2)}</TableCell>
+                            <TableCell className="text-right text-green-600 font-medium text-xs sm:text-sm">
                               +{m.total_in.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right text-red-600 font-medium">
+                            <TableCell className="text-right text-red-600 font-medium text-xs sm:text-sm">
                               -{m.total_out.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right font-bold">{m.closing_stock.toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-bold text-xs sm:text-sm">{m.closing_stock.toFixed(2)}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -670,59 +675,62 @@ export default function StockReports() {
           {/* Party-wise Report */}
           <TabsContent value="party-wise">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4">
                 <div>
-                  <CardTitle>Party-wise Material Tracking</CardTitle>
-                  <CardDescription>Materials received from each party</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">Party-wise Material Tracking</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Materials received from each party</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => exportToCSV('party')}>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV('party')} className="w-full sm:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-2 sm:px-6">
                 {partySummary.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
                     No party-wise data for selected period
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {partySummary.map((party) => (
                       <div key={party.party_id} className="border rounded-lg overflow-hidden">
-                        <div className="bg-muted/50 px-4 py-3 border-b">
-                          <h3 className="font-semibold flex items-center gap-2">
+                        <div className="bg-muted/50 px-3 sm:px-4 py-2 sm:py-3 border-b">
+                          <h3 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
                             <Users className="h-4 w-4" />
                             {party.party_name}
                           </h3>
                         </div>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Material</TableHead>
-                              <TableHead>Unit</TableHead>
-                              <TableHead className="text-right text-green-600">Received</TableHead>
-                              <TableHead className="text-right text-red-600">Used</TableHead>
-                              <TableHead className="text-right">Balance</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {party.materials.map((m) => (
-                              <TableRow key={m.material_id}>
-                                <TableCell className="font-medium">{m.material_name}</TableCell>
-                                <TableCell>{m.unit}</TableCell>
-                                <TableCell className="text-right text-green-600">
-                                  +{m.total_received.toFixed(2)}
-                                </TableCell>
-                                <TableCell className="text-right text-red-600">
-                                  -{m.total_used.toFixed(2)}
-                                </TableCell>
-                                <TableCell className={`text-right font-bold ${m.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {m.balance.toFixed(2)}
-                                </TableCell>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs sm:text-sm">Material</TableHead>
+                                <TableHead className="text-xs sm:text-sm text-right text-green-600">In</TableHead>
+                                <TableHead className="text-xs sm:text-sm text-right text-red-600">Out</TableHead>
+                                <TableHead className="text-xs sm:text-sm text-right">Balance</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {party.materials.map((m) => (
+                                <TableRow key={m.material_id}>
+                                  <TableCell className="font-medium text-xs sm:text-sm">
+                                    <div>{m.material_name}</div>
+                                    <div className="text-xs text-muted-foreground">{m.unit}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right text-green-600 text-xs sm:text-sm">
+                                    +{m.total_received.toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="text-right text-red-600 text-xs sm:text-sm">
+                                    -{m.total_used.toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className={`text-right font-bold text-xs sm:text-sm ${m.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {m.balance.toFixed(2)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -734,32 +742,31 @@ export default function StockReports() {
           {/* Order-wise Report */}
           <TabsContent value="order-wise">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4">
                 <div>
-                  <CardTitle>Order-wise Consumption</CardTitle>
-                  <CardDescription>Materials consumed per order</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">Order-wise Consumption</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Materials consumed per order</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => exportToCSV('order')}>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV('order')} className="w-full sm:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
               </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
+              <CardContent className="px-2 sm:px-6">
+                <div className="border rounded-lg overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Order No</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Material</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead>Remarks</TableHead>
+                        <TableHead className="text-xs sm:text-sm whitespace-nowrap">Order No</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Material</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right">Qty</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {transactions.filter((tx) => tx.order_number).length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={4} className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
                             No order-linked transactions for selected period
                           </TableCell>
                         </TableRow>
@@ -768,15 +775,17 @@ export default function StockReports() {
                           .filter((tx) => tx.order_number)
                           .map((tx) => (
                             <TableRow key={tx.id}>
-                              <TableCell>
+                              <TableCell className="text-xs sm:text-sm">
                                 <span className="font-medium text-primary">{tx.order_number}</span>
                               </TableCell>
-                              <TableCell>{format(new Date(tx.transaction_date), 'dd MMM yyyy')}</TableCell>
-                              <TableCell>{tx.materials?.name}</TableCell>
-                              <TableCell className="text-right text-red-600 font-medium">
-                                -{tx.quantity.toFixed(2)} {tx.materials?.unit}
+                              <TableCell className="text-xs sm:text-sm whitespace-nowrap">{format(new Date(tx.transaction_date), 'dd MMM')}</TableCell>
+                              <TableCell className="text-xs sm:text-sm">
+                                <div>{tx.materials?.name}</div>
+                                <div className="text-xs text-muted-foreground">{tx.remarks || ''}</div>
                               </TableCell>
-                              <TableCell className="text-muted-foreground">{tx.remarks || '—'}</TableCell>
+                              <TableCell className="text-right text-red-600 font-medium text-xs sm:text-sm whitespace-nowrap">
+                                -{tx.quantity.toFixed(2)}
+                              </TableCell>
                             </TableRow>
                           ))
                       )}
@@ -790,86 +799,65 @@ export default function StockReports() {
           {/* Detailed Ledger */}
           <TabsContent value="detailed">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4">
                 <div>
-                  <CardTitle>Detailed Stock Ledger</CardTitle>
-                  <CardDescription>Complete transaction history with running balance</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">Detailed Stock Ledger</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Complete transaction history with running balance</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => exportToCSV('detailed')}>
+                <Button variant="outline" size="sm" onClick={() => exportToCSV('detailed')} className="w-full sm:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
               </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
+              <CardContent className="px-2 sm:px-6">
+                <div className="border rounded-lg overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Material</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right text-green-600">In</TableHead>
-                        <TableHead className="text-right text-red-600">Out</TableHead>
-                        <TableHead className="text-right">Balance</TableHead>
-                        <TableHead>Source/Reason</TableHead>
-                        <TableHead>Party</TableHead>
-                        <TableHead>Order</TableHead>
-                        <TableHead>Remarks</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Material</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Type</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right text-green-600">In</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right text-red-600">Out</TableHead>
+                        <TableHead className="text-xs sm:text-sm text-right">Balance</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {transactionsWithBalance.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
                             No transactions for selected period
                           </TableCell>
                         </TableRow>
                       ) : (
                         transactionsWithBalance.map((tx) => (
                           <TableRow key={tx.id}>
-                            <TableCell className="whitespace-nowrap">
-                              {format(new Date(tx.transaction_date), 'dd MMM yyyy')}
+                            <TableCell className="text-xs sm:text-sm whitespace-nowrap">
+                              {format(new Date(tx.transaction_date), 'dd MMM')}
                             </TableCell>
-                            <TableCell className="font-medium">{tx.materials?.name}</TableCell>
+                            <TableCell className="font-medium text-xs sm:text-sm">
+                              <div>{tx.materials?.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {tx.source_type
+                                  ? SOURCE_LABELS[tx.source_type]
+                                  : tx.reason_type
+                                  ? REASON_LABELS[tx.reason_type]
+                                  : tx.order_number || ''}
+                              </div>
+                            </TableCell>
                             <TableCell>
-                              <Badge variant={isStockIn(tx.transaction_type) ? 'default' : 'destructive'}>
-                                {isStockIn(tx.transaction_type) ? (
-                                  <span className="flex items-center gap-1">
-                                    <ArrowDownCircle className="h-3 w-3" /> IN
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1">
-                                    <ArrowUpCircle className="h-3 w-3" /> OUT
-                                  </span>
-                                )}
+                              <Badge variant={isStockIn(tx.transaction_type) ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">
+                                {isStockIn(tx.transaction_type) ? 'IN' : 'OUT'}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right text-green-600 font-medium">
+                            <TableCell className="text-right text-green-600 font-medium text-xs sm:text-sm">
                               {isStockIn(tx.transaction_type) ? `+${tx.quantity.toFixed(2)}` : ''}
                             </TableCell>
-                            <TableCell className="text-right text-red-600 font-medium">
+                            <TableCell className="text-right text-red-600 font-medium text-xs sm:text-sm">
                               {isStockOut(tx.transaction_type) ? `-${tx.quantity.toFixed(2)}` : ''}
                             </TableCell>
-                            <TableCell className="text-right font-medium">
+                            <TableCell className="text-right font-medium text-xs sm:text-sm">
                               {tx.runningBalance.toFixed(2)}
-                            </TableCell>
-                            <TableCell>
-                              {tx.source_type
-                                ? SOURCE_LABELS[tx.source_type]
-                                : tx.reason_type
-                                ? REASON_LABELS[tx.reason_type]
-                                : '—'}
-                            </TableCell>
-                            <TableCell>{tx.parties?.name || '—'}</TableCell>
-                            <TableCell>
-                              {tx.order_number ? (
-                                <span className="text-primary font-medium">{tx.order_number}</span>
-                              ) : (
-                                '—'
-                              )}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground max-w-[150px] truncate">
-                              {tx.remarks || '—'}
                             </TableCell>
                           </TableRow>
                         ))
