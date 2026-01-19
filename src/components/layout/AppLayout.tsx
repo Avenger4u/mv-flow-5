@@ -59,21 +59,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-sidebar border-b border-sidebar-border z-50 flex items-center px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-sidebar border-b border-sidebar-border z-50 flex items-center px-3 gap-2">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="p-2 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors"
+          className="p-2 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors shrink-0"
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" />
         </button>
-        <div className="flex-1 flex items-center justify-center">
-          <h1 className="text-lg font-display font-semibold text-sidebar-foreground">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-display font-semibold text-sidebar-foreground truncate">
             Mystic Vastra
           </h1>
         </div>
-        <div className="flex items-center gap-1 text-sidebar-foreground text-xs">
-          <Clock className="h-3.5 w-3.5" />
-          <span className="font-medium">{format(currentTime, 'hh:mm a')}</span>
+        <div className="flex flex-col items-end text-sidebar-foreground text-[10px] leading-tight shrink-0">
+          <span className="font-medium">{format(currentTime, 'EEE, dd MMM')}</span>
+          <span className="text-sidebar-foreground/70">{format(currentTime, 'hh:mm:ss a')}</span>
         </div>
       </header>
 
