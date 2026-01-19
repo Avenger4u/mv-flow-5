@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowDownCircle,
@@ -40,7 +41,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfMonth, startOfYear } from 'date-fns';
 
 interface Material {
   id: string;
@@ -149,6 +150,28 @@ export default function StockReports() {
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedMaterial, setSelectedMaterial] = useState<string>('all');
   const [selectedParty, setSelectedParty] = useState<string>('all');
+  const [datePreset, setDatePreset] = useState<string>('all');
+
+  const handleDatePreset = (preset: string) => {
+    setDatePreset(preset);
+    const today = new Date();
+    
+    switch (preset) {
+      case 'this_month':
+        setStartDate(format(startOfMonth(today), 'yyyy-MM-dd'));
+        setEndDate(format(today, 'yyyy-MM-dd'));
+        break;
+      case 'this_year':
+        setStartDate(format(startOfYear(today), 'yyyy-MM-dd'));
+        setEndDate(format(today, 'yyyy-MM-dd'));
+        break;
+      case 'all':
+      default:
+        setStartDate('2000-01-01');
+        setEndDate(format(today, 'yyyy-MM-dd'));
+        break;
+    }
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -549,14 +572,33 @@ export default function StockReports() {
               Report Filters
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Quick Date Presets */}
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label className="text-xs sm:text-sm">Quick Filter</Label>
+              <ToggleGroup type="single" value={datePreset} onValueChange={(v) => v && handleDatePreset(v)} className="justify-start">
+                <ToggleGroupItem value="this_month" aria-label="This Month" className="text-xs sm:text-sm px-3">
+                  This Month
+                </ToggleGroupItem>
+                <ToggleGroupItem value="this_year" aria-label="This Year" className="text-xs sm:text-sm px-3">
+                  This Year
+                </ToggleGroupItem>
+                <ToggleGroupItem value="all" aria-label="All Time" className="text-xs sm:text-sm px-3">
+                  All Time
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               <div className="space-y-1.5 sm:space-y-2">
                 <Label className="text-xs sm:text-sm">Start Date</Label>
                 <Input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setDatePreset('');
+                  }}
                   className="text-sm"
                 />
               </div>
@@ -565,7 +607,10 @@ export default function StockReports() {
                 <Input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setDatePreset('');
+                  }}
                   className="text-sm"
                 />
               </div>
