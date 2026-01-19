@@ -57,6 +57,7 @@ interface MaterialFormData {
   unit: string;
   rate: string;
   opening_stock: string;
+  opening_stock_date: string;
   min_stock: string;
   notes: string;
 }
@@ -67,6 +68,7 @@ const initialFormData: MaterialFormData = {
   unit: 'Pcs',
   rate: '',
   opening_stock: '0',
+  opening_stock_date: new Date().toISOString().split('T')[0],
   min_stock: '0',
   notes: '',
 };
@@ -233,7 +235,7 @@ export default function Inventory() {
             material_id: newMaterial.id,
             transaction_type: 'in',
             quantity: openingStock,
-            transaction_date: new Date().toISOString().split('T')[0],
+            transaction_date: formData.opening_stock_date || new Date().toISOString().split('T')[0],
             source_type: 'opening_stock',
             balance_after: openingStock,
             remarks: 'Opening stock entry',
@@ -334,6 +336,7 @@ export default function Inventory() {
       unit: material.unit,
       rate: material.rate.toString(),
       opening_stock: '0', // Not editable for existing materials
+      opening_stock_date: new Date().toISOString().split('T')[0],
       min_stock: material.min_stock?.toString() || '0',
       notes: material.notes || '',
     });
@@ -527,22 +530,35 @@ export default function Inventory() {
                   </div>
 
                   {!editingMaterial && (
-                    <div className="space-y-2">
-                      <Label htmlFor="opening_stock">Opening Stock</Label>
-                      <Input
-                        id="opening_stock"
-                        type="number"
-                        step="0.01"
-                        value={formData.opening_stock}
-                        onChange={(e) =>
-                          setFormData({ ...formData, opening_stock: e.target.value })
-                        }
-                        placeholder="0"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Initial stock quantity. This will create an opening stock ledger entry.
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="opening_stock">Opening Stock</Label>
+                        <Input
+                          id="opening_stock"
+                          type="number"
+                          step="0.01"
+                          value={formData.opening_stock}
+                          onChange={(e) =>
+                            setFormData({ ...formData, opening_stock: e.target.value })
+                          }
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="opening_stock_date">Opening Stock Date</Label>
+                        <Input
+                          id="opening_stock_date"
+                          type="date"
+                          value={formData.opening_stock_date}
+                          onChange={(e) =>
+                            setFormData({ ...formData, opening_stock_date: e.target.value })
+                          }
+                        />
+                      </div>
+                      <p className="col-span-2 text-xs text-muted-foreground">
+                        Initial stock quantity and date. This will create an opening stock ledger entry.
                       </p>
-                    </div>
+                    </>
                   )}
 
                   <div className="col-span-2 space-y-2">
