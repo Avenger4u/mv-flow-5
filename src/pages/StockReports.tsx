@@ -233,6 +233,32 @@ export default function StockReports() {
     }
   };
 
+  const handleSyncOrderLedger = async () => {
+    setSyncingOrderLedger(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-order-ledger');
+      if (error) throw error;
+
+      toast({
+        title: 'Order Ledger Synced',
+        description: data?.message || `${data?.synced || 0} order deductions synced to ledger`,
+      });
+
+      setNeedsOrderLedgerSync(false);
+      await fetchInitialData();
+      await fetchReports();
+    } catch (error) {
+      console.error('Error syncing order ledger:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to sync order ledger',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingOrderLedger(false);
+    }
+  };
+
   const fetchReports = async () => {
     try {
       // Fetch ALL transactions for opening stock calculation (before start date)
@@ -483,7 +509,7 @@ export default function StockReports() {
             {allTransactions.length === 0 && (
               <Button
                 onClick={handleInitializeLedger}
-                disabled={initializingLedger || refreshing}
+                disabled={initializingLedger || refreshing || syncingOrderLedger}
                 className="gap-2 flex-1 sm:flex-none"
                 size="sm"
               >
@@ -491,9 +517,20 @@ export default function StockReports() {
                 {initializingLedger ? 'Initializing…' : 'Initialize Ledger'}
               </Button>
             )}
+            {needsOrderLedgerSync && (
+              <Button
+                onClick={handleSyncOrderLedger}
+                disabled={syncingOrderLedger || refreshing || initializingLedger}
+                className="gap-2 flex-1 sm:flex-none bg-amber-600 hover:bg-amber-700"
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 ${syncingOrderLedger ? 'animate-spin' : ''}`} />
+                {syncingOrderLedger ? 'Syncing…' : 'Sync Order Ledger'}
+              </Button>
+            )}
             <Button 
               onClick={handleRefresh} 
-              disabled={refreshing || initializingLedger}
+              disabled={refreshing || initializingLedger || syncingOrderLedger}
               variant="outline"
               className="gap-2 flex-1 sm:flex-none"
               size="sm"
