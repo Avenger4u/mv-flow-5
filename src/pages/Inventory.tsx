@@ -88,6 +88,7 @@ export default function Inventory() {
   const [stockAction, setStockAction] = useState<'add' | 'reduce'>('add');
   const [stockQuantity, setStockQuantity] = useState('');
   const [stockRemarks, setStockRemarks] = useState('');
+  const [stockDate, setStockDate] = useState(new Date().toISOString().split('T')[0]);
   const [formData, setFormData] = useState<MaterialFormData>(initialFormData);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -303,6 +304,8 @@ export default function Inventory() {
           material_id: selectedMaterial.id,
           transaction_type: stockAction,
           quantity: qty,
+          transaction_date: stockDate,
+          balance_after: newStock,
           remarks: stockRemarks.trim() || null,
         });
 
@@ -317,6 +320,7 @@ export default function Inventory() {
       setSelectedMaterial(null);
       setStockQuantity('');
       setStockRemarks('');
+      setStockDate(new Date().toISOString().split('T')[0]);
       fetchData();
     } catch (error) {
       console.error('Error updating stock:', error);
@@ -752,6 +756,14 @@ export default function Inventory() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={stockDate}
+                  onChange={(e) => setStockDate(e.target.value)}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input
