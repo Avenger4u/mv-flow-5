@@ -28,7 +28,11 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowDownCircle,
@@ -40,8 +44,10 @@ import {
   FileText,
   Calendar,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
-import { format, startOfMonth, startOfYear } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 interface Material {
   id: string;
@@ -131,6 +137,23 @@ const isStockOut = (type: string) => {
   );
 };
 
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030'];
+
 export default function StockReports() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
@@ -145,33 +168,37 @@ export default function StockReports() {
   const [needsOrderLedgerSync, setNeedsOrderLedgerSync] = useState(false);
   const { toast } = useToast();
 
-  // Filters (default: include historical opening stock entries)
-  const [startDate, setStartDate] = useState('2000-01-01');
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  // Filter states
+  const currentDate = new Date();
+  const currentYear = '2026'; // Default year as requested
+  const currentMonth = format(currentDate, 'MM');
+  
+  const [filterType, setFilterType] = useState<'this_month' | 'month_year' | 'all' | 'custom'>('this_month');
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [customDateOpen, setCustomDateOpen] = useState(false);
+  const [startDate, setStartDate] = useState(format(startOfMonth(currentDate), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(currentDate, 'yyyy-MM-dd'));
   const [selectedMaterial, setSelectedMaterial] = useState<string>('all');
   const [selectedParty, setSelectedParty] = useState<string>('all');
-  const [datePreset, setDatePreset] = useState<string>('all');
 
-  const handleDatePreset = (preset: string) => {
-    setDatePreset(preset);
+  // Update date range when filter type or month/year changes
+  useEffect(() => {
     const today = new Date();
     
-    switch (preset) {
-      case 'this_month':
-        setStartDate(format(startOfMonth(today), 'yyyy-MM-dd'));
-        setEndDate(format(today, 'yyyy-MM-dd'));
-        break;
-      case 'this_year':
-        setStartDate(format(startOfYear(today), 'yyyy-MM-dd'));
-        setEndDate(format(today, 'yyyy-MM-dd'));
-        break;
-      case 'all':
-      default:
-        setStartDate('2000-01-01');
-        setEndDate(format(today, 'yyyy-MM-dd'));
-        break;
+    if (filterType === 'this_month') {
+      setStartDate(format(startOfMonth(today), 'yyyy-MM-dd'));
+      setEndDate(format(today, 'yyyy-MM-dd'));
+    } else if (filterType === 'month_year') {
+      const selectedDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
+      setStartDate(format(startOfMonth(selectedDate), 'yyyy-MM-dd'));
+      setEndDate(format(endOfMonth(selectedDate), 'yyyy-MM-dd'));
+    } else if (filterType === 'all') {
+      setStartDate('2000-01-01');
+      setEndDate(format(today, 'yyyy-MM-dd'));
     }
-  };
+    // For 'custom', dates are set manually
+  }, [filterType, selectedYear, selectedMonth]);
 
   useEffect(() => {
     fetchInitialData();
@@ -573,47 +600,117 @@ export default function StockReports() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Quick Date Presets */}
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label className="text-xs sm:text-sm">Quick Filter</Label>
-              <ToggleGroup type="single" value={datePreset} onValueChange={(v) => v && handleDatePreset(v)} className="justify-start">
-                <ToggleGroupItem value="this_month" aria-label="This Month" className="text-xs sm:text-sm px-3">
-                  This Month
-                </ToggleGroupItem>
-                <ToggleGroupItem value="this_year" aria-label="This Year" className="text-xs sm:text-sm px-3">
-                  This Year
-                </ToggleGroupItem>
-                <ToggleGroupItem value="all" aria-label="All Time" className="text-xs sm:text-sm px-3">
-                  All Time
-                </ToggleGroupItem>
-              </ToggleGroup>
+            {/* Quick Filter Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={filterType === 'this_month' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterType('this_month')}
+                className="text-xs sm:text-sm"
+              >
+                This Month
+              </Button>
+              <Button
+                variant={filterType === 'month_year' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterType('month_year')}
+                className="text-xs sm:text-sm"
+              >
+                Select Month/Year
+              </Button>
+              <Button
+                variant={filterType === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterType('all')}
+                className="text-xs sm:text-sm"
+              >
+                All Time
+              </Button>
+              <Button
+                variant={filterType === 'custom' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setFilterType('custom');
+                  setCustomDateOpen(true);
+                }}
+                className="text-xs sm:text-sm"
+              >
+                Custom Date
+              </Button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label className="text-xs sm:text-sm">Start Date</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setDatePreset('');
-                  }}
-                  className="text-sm"
-                />
+
+            {/* Month/Year Selection - shown when 'month_year' is selected */}
+            {filterType === 'month_year' && (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-xs sm:text-sm">Year</Label>
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEARS.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-xs sm:text-sm">Month</Label>
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label className="text-xs sm:text-sm">End Date</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setDatePreset('');
-                  }}
-                  className="text-sm"
-                />
-              </div>
+            )}
+
+            {/* Custom Date Selection - shown when 'custom' is selected */}
+            {filterType === 'custom' && (
+              <Collapsible open={customDateOpen} onOpenChange={setCustomDateOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-xs sm:text-sm">
+                    <span>Custom Date Range</span>
+                    {customDateOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label className="text-xs sm:text-sm">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label className="text-xs sm:text-sm">End Date</Label>
+                      <Input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Material & Party Filters */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1.5 sm:space-y-2">
                 <Label className="text-xs sm:text-sm">Material</Label>
                 <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>
@@ -646,6 +743,12 @@ export default function StockReports() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Current Filter Display */}
+            <div className="text-xs sm:text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+              Showing data from <span className="font-medium text-foreground">{format(new Date(startDate), 'dd MMM yyyy')}</span> to{' '}
+              <span className="font-medium text-foreground">{format(new Date(endDate), 'dd MMM yyyy')}</span>
             </div>
           </CardContent>
         </Card>
