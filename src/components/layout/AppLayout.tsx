@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -153,8 +154,9 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
           </nav>
 
-          {/* Sign Out */}
-          <div className="p-4 border-t border-sidebar-border">
+          {/* Theme Toggle & Sign Out */}
+          <div className="p-4 border-t border-sidebar-border space-y-2">
+            <ThemeToggle />
             <Button
               variant="ghost"
               onClick={handleSignOut}
