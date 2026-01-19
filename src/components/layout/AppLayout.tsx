@@ -13,10 +13,9 @@ import {
   X,
   FileText,
   Download,
-  BarChart3,
   ArrowLeftRight,
   ClipboardList,
-  Clock,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -25,7 +24,14 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  superAdminOnly?: boolean;
+}
+
+const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Create Order', href: '/orders/new', icon: ShoppingCart },
   { name: 'Orders', href: '/orders', icon: FileText },
@@ -35,6 +41,7 @@ const navigation = [
   { name: 'Stock Reports', href: '/stock-reports', icon: ClipboardList },
   { name: 'Backup', href: '/backup', icon: Download },
   { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'User Management', href: '/users', icon: UserCog, superAdminOnly: true },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -42,7 +49,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, isSuperAdmin } = useAuth();
+
+  // Filter navigation items based on user role
+  const filteredNavigation = navigation.filter(item => 
+    !item.superAdminOnly || isSuperAdmin
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -117,9 +129,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             </button>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href || 
                 (item.href !== '/' && location.pathname.startsWith(item.href));
               
