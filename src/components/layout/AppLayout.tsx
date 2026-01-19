@@ -66,15 +66,19 @@ export function AppLayout({ children }: AppLayoutProps) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-display font-semibold text-sidebar-foreground truncate">
+        <div className="flex-1 flex justify-center">
+          <Link to="/" className="text-base font-display font-semibold text-sidebar-foreground truncate hover:text-sidebar-foreground/80 transition-colors">
             Mystic Vastra
-          </h1>
+          </Link>
         </div>
-        <div className="flex flex-col items-end text-sidebar-foreground text-[10px] leading-tight shrink-0">
-          <span className="font-medium">{format(currentTime, 'EEE, dd MMM')}</span>
-          <span className="text-sidebar-foreground/70">{format(currentTime, 'hh:mm:ss a')}</span>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className="shrink-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground p-2"
+        >
+          <LogOut className="h-5 w-5" />
+        </Button>
       </header>
 
       {/* Mobile Sidebar Overlay */}
