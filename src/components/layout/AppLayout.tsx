@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,10 @@ import {
   BarChart3,
   ArrowLeftRight,
   ClipboardList,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -37,9 +39,17 @@ const navigation = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -57,9 +67,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Menu className="h-6 w-6" />
         </button>
         <div className="flex-1 flex items-center justify-center">
-          <h1 className="text-xl font-display font-semibold text-sidebar-foreground">
+          <h1 className="text-lg font-display font-semibold text-sidebar-foreground">
             Mystic Vastra
           </h1>
+        </div>
+        <div className="flex items-center gap-1 text-sidebar-foreground text-xs">
+          <Clock className="h-3.5 w-3.5" />
+          <span className="font-medium">{format(currentTime, 'hh:mm a')}</span>
         </div>
       </header>
 
@@ -79,11 +93,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
+          {/* Logo and DateTime */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-            <h1 className="text-xl font-display font-semibold text-sidebar-foreground">
-              Mystic Vastra
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-display font-semibold text-sidebar-foreground">
+                Mystic Vastra
+              </h1>
+              <div className="flex items-center gap-1.5 text-sidebar-foreground/70 text-xs">
+                <span>{format(currentTime, 'dd MMM yyyy')}</span>
+                <span>•</span>
+                <span className="font-medium">{format(currentTime, 'hh:mm:ss a')}</span>
+              </div>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors"
