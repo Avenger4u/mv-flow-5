@@ -246,17 +246,17 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="font-display flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
-            Material Ledger: {material.name}
+      <DialogContent className="max-w-[98vw] sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="font-display flex items-center gap-2 text-base sm:text-lg">
+            <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+            <span className="truncate">{material.name}</span>
           </DialogTitle>
-        <DialogDescription className="flex flex-wrap items-center gap-2">
-            <span>Current Stock: <span className="font-semibold text-foreground">{material.current_stock} {material.unit}</span></span>
-            <span className="text-muted-foreground">•</span>
+          <DialogDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
+            <span>Current: <span className="font-semibold text-foreground">{material.current_stock} {material.unit}</span></span>
+            <span className="text-muted-foreground hidden sm:inline">•</span>
             <span className="flex items-center gap-1">
-              Opening Stock: <span className="font-semibold">{material.opening_stock || 0} {material.unit}</span>
+              Opening: <span className="font-semibold">{material.opening_stock || 0} {material.unit}</span>
               <Button
                 type="button"
                 variant="ghost"
@@ -273,10 +273,10 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
 
         {/* Edit Opening Stock Dialog */}
         <Dialog open={editOpeningStockDialogOpen} onOpenChange={setEditOpeningStockDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="max-w-[95vw] sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="font-display">Edit Opening Stock</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="font-display text-base sm:text-lg">Edit Opening Stock</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Update the opening stock for {material.name}. This will adjust the current stock accordingly.
               </DialogDescription>
             </DialogHeader>
@@ -293,7 +293,7 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
                   placeholder="Enter opening stock"
                 />
               </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-sm space-y-1">
+              <div className="p-3 rounded-lg bg-muted/50 text-xs sm:text-sm space-y-1">
                 <p><span className="text-muted-foreground">Current Opening Stock:</span> {material.opening_stock || 0} {material.unit}</p>
                 <p><span className="text-muted-foreground">Current Stock:</span> {material.current_stock} {material.unit}</p>
                 {newOpeningStock && !isNaN(parseFloat(newOpeningStock)) && (
@@ -307,11 +307,11 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
                 )}
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditOpeningStockDialogOpen(false)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setEditOpeningStockDialogOpen(false)} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleSaveOpeningStock} disabled={savingOpeningStock} className="gradient-primary border-0">
+              <Button onClick={handleSaveOpeningStock} disabled={savingOpeningStock} className="gradient-primary border-0 w-full sm:w-auto">
                 {savingOpeningStock ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -326,47 +326,47 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
         </Dialog>
 
         {/* Date Filters */}
-        <div className="flex flex-wrap items-end gap-4 p-4 bg-muted/30 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 p-3 sm:p-4 bg-muted/30 rounded-lg">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Date Range:</span>
+            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs sm:text-sm font-medium">Date Range:</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <Label htmlFor="ledger-start" className="sr-only">Start Date</Label>
             <Input
               id="ledger-start"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-auto"
+              className="w-full sm:w-auto text-sm"
             />
-            <span className="text-muted-foreground">to</span>
+            <span className="hidden sm:inline text-muted-foreground">to</span>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-auto"
+              className="w-full sm:w-auto text-sm"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={exportToCSV}>
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
-            <p className="text-xs text-muted-foreground">Total In</p>
-            <p className="text-lg font-bold text-green-600">+{totalIn}</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="p-2 sm:p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Total In</p>
+            <p className="text-sm sm:text-lg font-bold text-green-600">+{totalIn}</p>
           </div>
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
-            <p className="text-xs text-muted-foreground">Total Out</p>
-            <p className="text-lg font-bold text-red-600">-{totalOut}</p>
+          <div className="p-2 sm:p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Total Out</p>
+            <p className="text-sm sm:text-lg font-bold text-red-600">-{totalOut}</p>
           </div>
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
-            <p className="text-xs text-muted-foreground">Net Change</p>
-            <p className={`text-lg font-bold ${totalIn - totalOut >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="p-2 sm:p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Net Change</p>
+            <p className={`text-sm sm:text-lg font-bold ${totalIn - totalOut >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {totalIn - totalOut >= 0 ? '+' : ''}{totalIn - totalOut}
             </p>
           </div>
@@ -379,109 +379,132 @@ export function MaterialLedger({ material, open, onOpenChange, onStockUpdated }:
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-sm">
               No stock transactions for this period.
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right text-green-600">In</TableHead>
-                    <TableHead className="text-right text-red-600">Out</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Source/Reason</TableHead>
-                    <TableHead>Party</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Remarks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Opening Balance Row */}
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-medium">{startDate}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">OPENING</Badge>
-                    </TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right font-bold">{material.opening_stock || 0}</TableCell>
-                    <TableCell colSpan={4} className="text-muted-foreground">Opening Balance</TableCell>
-                  </TableRow>
-                  {transactionsWithBalance.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {format(new Date(tx.transaction_date), 'dd MMM yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={tx.transaction_type === 'add' ? 'default' : 'destructive'}>
-                          {tx.transaction_type === 'add' ? (
-                            <span className="flex items-center gap-1">
-                              <ArrowDownCircle className="h-3 w-3" /> IN
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <ArrowUpCircle className="h-3 w-3" /> OUT
-                            </span>
-                          )}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-green-600 font-medium">
-                        {tx.transaction_type === 'add' ? `+${tx.quantity}` : ''}
-                      </TableCell>
-                      <TableCell className="text-right text-red-600 font-medium">
-                        {tx.transaction_type === 'reduce' ? `-${tx.quantity}` : ''}
-                      </TableCell>
-                      <TableCell className="text-right font-bold">
-                        {tx.balance.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {tx.source_type
-                          ? SOURCE_LABELS[tx.source_type]
-                          : tx.reason_type
-                          ? REASON_LABELS[tx.reason_type]
-                          : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {tx.parties?.name || '—'}
-                      </TableCell>
-                      <TableCell>
-                        {tx.order_number ? (
-                          <span className="text-primary font-medium">{tx.order_number}</span>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
-                        {tx.remarks || '—'}
-                      </TableCell>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Date</TableHead>
+                      <TableHead className="text-xs">Type</TableHead>
+                      <TableHead className="text-xs text-right text-green-600">In</TableHead>
+                      <TableHead className="text-xs text-right text-red-600">Out</TableHead>
+                      <TableHead className="text-xs text-right">Balance</TableHead>
+                      <TableHead className="text-xs">Source/Reason</TableHead>
+                      <TableHead className="text-xs">Party</TableHead>
+                      <TableHead className="text-xs">Order</TableHead>
+                      <TableHead className="text-xs">Remarks</TableHead>
                     </TableRow>
-                  ))}
-                  {/* Closing Balance Row */}
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-medium">{endDate}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">CLOSING</Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-green-600 font-bold">+{totalIn}</TableCell>
-                    <TableCell className="text-right text-red-600 font-bold">-{totalOut}</TableCell>
-                    <TableCell className="text-right font-bold">
-                      {transactionsWithBalance.length > 0 
-                        ? transactionsWithBalance[transactionsWithBalance.length - 1].balance.toFixed(2)
-                        : (material.opening_stock || 0)}
-                    </TableCell>
-                    <TableCell colSpan={4} className="text-muted-foreground">Closing Balance</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Opening Balance Row */}
+                    <TableRow className="bg-muted/30">
+                      <TableCell className="font-medium text-xs">{startDate}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">OPENING</Badge>
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                      <TableCell className="text-right font-bold text-xs">{material.opening_stock || 0}</TableCell>
+                      <TableCell colSpan={4} className="text-muted-foreground text-xs">Opening Balance</TableCell>
+                    </TableRow>
+                    {transactionsWithBalance.map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {format(new Date(tx.transaction_date), 'dd MMM yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={isStockIn(tx.transaction_type) ? 'default' : 'destructive'} className="text-xs">
+                            {isStockIn(tx.transaction_type) ? (
+                              <span className="flex items-center gap-1">
+                                <ArrowDownCircle className="h-3 w-3" /> IN
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <ArrowUpCircle className="h-3 w-3" /> OUT
+                              </span>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-green-600 font-medium text-xs">
+                          {isStockIn(tx.transaction_type) ? `+${tx.quantity}` : ''}
+                        </TableCell>
+                        <TableCell className="text-right text-red-600 font-medium text-xs">
+                          {isStockOut(tx.transaction_type) ? `-${tx.quantity}` : ''}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-xs">
+                          {tx.balance.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {tx.source_type
+                            ? SOURCE_LABELS[tx.source_type]
+                            : tx.reason_type
+                            ? REASON_LABELS[tx.reason_type]
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs">{tx.parties?.name || '—'}</TableCell>
+                        <TableCell className="text-xs">{tx.order_number || '—'}</TableCell>
+                        <TableCell className="max-w-xs truncate text-xs">{tx.remarks || '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-2">
+                {/* Opening Balance Card */}
+                <div className="p-3 rounded-lg bg-muted/30 border">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Badge variant="outline" className="text-xs mb-1">OPENING</Badge>
+                      <p className="text-xs text-muted-foreground">{startDate}</p>
+                    </div>
+                    <p className="font-bold">{material.opening_stock || 0} {material.unit}</p>
+                  </div>
+                </div>
+                {transactionsWithBalance.map((tx) => (
+                  <div key={tx.id} className={`p-3 rounded-lg border ${isStockIn(tx.transaction_type) ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={isStockIn(tx.transaction_type) ? 'default' : 'destructive'} className="text-xs">
+                            {isStockIn(tx.transaction_type) ? 'IN' : 'OUT'}
+                          </Badge>
+                          <span className={`font-bold text-sm ${isStockIn(tx.transaction_type) ? 'text-green-600' : 'text-red-600'}`}>
+                            {isStockIn(tx.transaction_type) ? '+' : '-'}{tx.quantity}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(tx.transaction_date), 'dd MMM yyyy')}
+                        </p>
+                        <p className="text-xs truncate">
+                          {tx.source_type
+                            ? SOURCE_LABELS[tx.source_type]
+                            : tx.reason_type
+                            ? REASON_LABELS[tx.reason_type]
+                            : tx.order_number || '—'}
+                        </p>
+                        {tx.remarks && <p className="text-xs text-muted-foreground truncate">{tx.remarks}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">Balance</p>
+                        <p className="font-bold text-sm">{tx.balance.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Close
           </Button>
         </DialogFooter>

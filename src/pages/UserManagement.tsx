@@ -287,21 +287,21 @@ export default function UserManagement() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground mt-1">Manage users, roles, and permissions</p>
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">User Management</h1>
+            <p className="text-sm text-muted-foreground mt-1">Manage users, roles, and permissions</p>
           </div>
           
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary border-0">
+              <Button className="gradient-primary border-0 w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add User
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>
@@ -351,11 +351,11 @@ export default function UserManagement() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setCreateDialogOpen(false)} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleCreateUser} disabled={actionLoading}>
+                <Button onClick={handleCreateUser} disabled={actionLoading} className="w-full sm:w-auto">
                   {actionLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -371,13 +371,13 @@ export default function UserManagement() {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>All Users</CardTitle>
+          <CardHeader className="px-4 sm:px-6">
+            <CardTitle className="text-base sm:text-lg">All Users</CardTitle>
             <CardDescription>
               {users.length} user{users.length !== 1 ? 's' : ''} in the system
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {loading ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -387,57 +387,109 @@ export default function UserManagement() {
                 No users found. Click "Add User" to create one.
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.fullName || '-'}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{getRoleBadge(user.role)}</TableCell>
+                          <TableCell>
+                            {user.createdAt ? format(new Date(user.createdAt), 'dd MMM yyyy') : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {user.role !== 'super_admin' && (
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setUserToUpdate(user);
+                                    setSelectedRole(user.role === 'admin' ? 'admin' : 'user');
+                                    setRoleDialogOpen(true);
+                                  }}
+                                >
+                                  <Shield className="h-4 w-4 mr-1" />
+                                  Role
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    setUserToDelete(user);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-3">
                   {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.fullName || '-'}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>
-                        {user.createdAt ? format(new Date(user.createdAt), 'dd MMM yyyy') : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {user.role !== 'super_admin' && (
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setUserToUpdate(user);
-                                setSelectedRole(user.role === 'admin' ? 'admin' : 'user');
-                                setRoleDialogOpen(true);
-                              }}
-                            >
-                              <Shield className="h-4 w-4 mr-1" />
-                              Role
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                setUserToDelete(user);
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    <Card key={user.id} className="overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-semibold truncate">{user.fullName || '-'}</h3>
+                              {getRoleBadge(user.role)}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Joined: {user.createdAt ? format(new Date(user.createdAt), 'dd MMM yyyy') : '-'}
+                            </p>
                           </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                          {user.role !== 'super_admin' && (
+                            <div className="flex flex-col gap-2 shrink-0">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setUserToUpdate(user);
+                                  setSelectedRole(user.role === 'admin' ? 'admin' : 'user');
+                                  setRoleDialogOpen(true);
+                                }}
+                              >
+                                <Shield className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  setUserToDelete(user);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

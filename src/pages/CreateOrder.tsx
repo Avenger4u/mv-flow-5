@@ -555,16 +555,16 @@ export default function CreateOrder() {
 
   return (
     <AppLayout>
-      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-foreground">
               Create Order
             </h1>
-            <p className="text-muted-foreground">Create a new packing list order</p>
+            <p className="text-sm text-muted-foreground">Create a new packing list order</p>
           </div>
-          <Button type="submit" disabled={saving} className="gradient-primary border-0">
+          <Button type="submit" disabled={saving} className="gradient-primary border-0 w-full sm:w-auto">
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -581,10 +581,10 @@ export default function CreateOrder() {
 
         {/* Order Details */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-display">Order Details</CardTitle>
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="text-base sm:text-lg font-display">Order Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid sm:grid-cols-3 gap-4">
+          <CardContent className="grid gap-4 sm:grid-cols-3 px-3 sm:px-6">
             {/* Order Number Preview */}
             <div className="space-y-2">
               <Label>Order Number</Label>

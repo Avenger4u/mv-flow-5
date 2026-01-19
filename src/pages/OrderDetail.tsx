@@ -223,27 +223,27 @@ export default function OrderDetail() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
               <Link to="/orders">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-foreground truncate">
                 {order.order_number}
               </h1>
-              <p className="text-muted-foreground">{formatDate(order.order_date)}</p>
+              <p className="text-sm text-muted-foreground">{formatDate(order.order_date)}</p>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 print:hidden">
             <Select value={order.status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -252,45 +252,47 @@ export default function OrderDetail() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" asChild>
-              <Link to={`/orders/${order.id}/edit`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button variant="outline" asChild size="sm" className="flex-1 sm:flex-none">
+                <Link to={`/orders/${order.id}/edit`}>
+                  <Pencil className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Edit</span>
+                </Link>
+              </Button>
 
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
+              <Button variant="outline" onClick={handlePrint} size="sm" className="flex-1 sm:flex-none">
+                <Printer className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Print</span>
+              </Button>
 
-            <Button variant="outline" onClick={handleDownloadPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              PDF
-            </Button>
+              <Button variant="outline" onClick={handleDownloadPDF} size="sm" className="flex-1 sm:flex-none">
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">PDF</span>
+              </Button>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Order?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete order {order.order_number}. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="flex-1 sm:flex-none">
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Delete</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Order?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete order {order.order_number}. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                    <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </div>
 
@@ -327,20 +329,21 @@ export default function OrderDetail() {
           </Card>
 
           {/* Items Table */}
-          <Card className="mt-6 print:shadow-none print:border-0">
-            <CardHeader>
-              <CardTitle className="text-lg font-display">Items</CardTitle>
+          <Card className="mt-4 sm:mt-6 print:shadow-none print:border-0">
+            <CardHeader className="pb-2 sm:pb-4">
+              <CardTitle className="text-base sm:text-lg font-display">Items</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
+            <CardContent className="px-2 sm:px-6">
+              {/* Desktop Table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-2 w-16">S.No</th>
+                      <th className="text-left py-2 px-2 w-12">S.No</th>
                       <th className="text-left py-2 px-2">Particular</th>
-                      <th className="text-right py-2 px-2 w-24">Qty</th>
-                      <th className="text-right py-2 px-2 w-28">Rate/Dzn</th>
-                      <th className="text-right py-2 px-2 w-28">Total</th>
+                      <th className="text-right py-2 px-2 w-20">Qty</th>
+                      <th className="text-right py-2 px-2 w-24">Rate</th>
+                      <th className="text-right py-2 px-2 w-24">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -348,7 +351,7 @@ export default function OrderDetail() {
                       <tr key={item.id} className="border-b">
                         <td className="py-2 px-2">{item.serial_no}</td>
                         <td className="py-2 px-2">{item.particular}</td>
-                        <td className="py-2 px-2 text-right">
+                        <td className="py-2 px-2 text-right whitespace-nowrap">
                           {item.quantity} {item.quantity_unit}
                         </td>
                         <td className="py-2 px-2 text-right">
@@ -362,24 +365,41 @@ export default function OrderDetail() {
                   </tbody>
                 </table>
               </div>
+              {/* Mobile Cards */}
+              <div className="sm:hidden space-y-2">
+                {items.map((item) => (
+                  <div key={item.id} className="p-3 rounded-lg border bg-muted/20">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{item.serial_no}. {item.particular}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {item.quantity} {item.quantity_unit} × {formatCurrency(item.rate_per_dzn)}
+                        </p>
+                      </div>
+                      <p className="font-semibold text-sm shrink-0">{formatCurrency(item.total)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
           {/* Deductions */}
           {deductions.length > 0 && (
-            <Card className="mt-6 print:shadow-none print:border-0">
-              <CardHeader>
-                <CardTitle className="text-lg font-display">Raw Material Received</CardTitle>
+            <Card className="mt-4 sm:mt-6 print:shadow-none print:border-0">
+              <CardHeader className="pb-2 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg font-display">Raw Material Received</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+              <CardContent className="px-2 sm:px-6">
+                {/* Desktop Table */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
                         <th className="text-left py-2 px-2">Material</th>
-                        <th className="text-right py-2 px-2 w-24">Qty</th>
-                        <th className="text-right py-2 px-2 w-28">Rate</th>
-                        <th className="text-right py-2 px-2 w-28">Amount</th>
+                        <th className="text-right py-2 px-2 w-20">Qty</th>
+                        <th className="text-right py-2 px-2 w-24">Rate</th>
+                        <th className="text-right py-2 px-2 w-24">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -396,27 +416,43 @@ export default function OrderDetail() {
                     </tbody>
                   </table>
                 </div>
+                {/* Mobile Cards */}
+                <div className="sm:hidden space-y-2">
+                  {deductions.map((d) => (
+                    <div key={d.id} className="p-3 rounded-lg border bg-destructive/5 border-destructive/20">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">{d.material_name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {d.quantity} × {formatCurrency(d.rate)}
+                          </p>
+                        </div>
+                        <p className="font-semibold text-sm text-destructive shrink-0">-{formatCurrency(d.amount)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
 
           {/* Totals */}
-          <Card className="mt-6 bg-muted/30 print:shadow-none print:border print:bg-transparent">
-            <CardContent className="pt-6">
-              <div className="space-y-2 max-w-sm ml-auto">
+          <Card className="mt-4 sm:mt-6 bg-muted/30 print:shadow-none print:border print:bg-transparent">
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+              <div className="space-y-2 max-w-sm ml-auto text-sm sm:text-base">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sub Total:</span>
                   <span className="font-medium">{formatCurrency(order.subtotal)}</span>
                 </div>
                 {order.raw_material_deductions > 0 && (
                   <div className="flex justify-between text-destructive">
-                    <span>Raw Material Deductions:</span>
+                    <span className="text-sm">Raw Material:</span>
                     <span className="font-medium">
                       -{formatCurrency(order.raw_material_deductions)}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 border-t text-lg font-bold">
+                <div className="flex justify-between pt-2 border-t text-base sm:text-lg font-bold">
                   <span>Net Total:</span>
                   <span className="text-primary print:text-foreground">
                     {formatCurrency(order.net_total)}
