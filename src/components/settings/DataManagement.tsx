@@ -25,6 +25,17 @@ export function DataManagement() {
   const handleImportDemoData = async () => {
     setImporting(true);
     try {
+      // First, clear existing demo-like data to avoid conflicts
+      // Delete in correct order to respect foreign keys
+      await supabase.from('raw_material_deductions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('stock_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('materials').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('material_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('parties').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('order_templates').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
       // Create sample parties
       const { data: parties, error: partiesError } = await supabase
         .from('parties')
@@ -194,7 +205,7 @@ export function DataManagement() {
       console.error('Error importing demo data:', error);
       toast({
         title: 'Import Failed',
-        description: 'Failed to import demo data. Some data may already exist.',
+        description: 'Failed to import demo data. Please try again.',
         variant: 'destructive',
       });
     } finally {
