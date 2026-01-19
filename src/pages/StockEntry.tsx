@@ -386,50 +386,50 @@ export default function StockEntry() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-foreground">
               Stock Entry
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Record stock movements with proper documentation
             </p>
           </div>
           {lastEntry && (
-            <Button variant="outline" onClick={handleRepeatLastEntry}>
+            <Button variant="outline" onClick={handleRepeatLastEntry} size="sm" className="w-full sm:w-auto">
               <RotateCcw className="h-4 w-4 mr-2" />
               Repeat Last Entry
             </Button>
           )}
         </div>
 
-        <Tabs defaultValue="stock-in" className="space-y-6">
+        <Tabs defaultValue="stock-in" className="space-y-4 sm:space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="stock-in" className="gap-2">
-              <ArrowDownCircle className="h-4 w-4 text-green-500" />
-              Stock In
+            <TabsTrigger value="stock-in" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <ArrowDownCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
+              <span>Stock In</span>
             </TabsTrigger>
-            <TabsTrigger value="stock-out" className="gap-2">
-              <ArrowUpCircle className="h-4 w-4 text-red-500" />
-              Stock Out
+            <TabsTrigger value="stock-out" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <ArrowUpCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500" />
+              <span>Stock Out</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Stock In Tab */}
           <TabsContent value="stock-in">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ArrowDownCircle className="h-5 w-5 text-green-500" />
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <ArrowDownCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
                   Stock In Entry
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Record incoming stock - purchases, party supplies, returns, etc.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6">
                 <form onSubmit={handleStockIn} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
