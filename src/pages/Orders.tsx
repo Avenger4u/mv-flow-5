@@ -20,8 +20,10 @@ interface Order {
   order_number: string;
   order_date: string;
   subtotal: number;
+  raw_material_deductions: number;
   net_total: number;
   status: string;
+  party_id: string | null;
   parties: { name: string } | null;
 }
 
@@ -39,7 +41,7 @@ export default function Orders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, order_number, order_date, subtotal, net_total, status, parties(name)')
+        .select('id, order_number, order_date, subtotal, raw_material_deductions, net_total, status, party_id, parties(name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -128,7 +130,7 @@ export default function Orders() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredOrders.map((order) => (
-              <OrderPreviewCard key={order.id} order={order} />
+              <OrderPreviewCard key={order.id} order={order} onDuplicate={fetchOrders} />
             ))}
           </div>
         )}

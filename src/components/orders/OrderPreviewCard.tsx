@@ -1,12 +1,12 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText } from 'lucide-react';
+import { FileText, Copy, Package } from 'lucide-react';
 import { generateOrderPDF } from '@/lib/pdf-generator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface OrderPreviewCardProps {
   order: {
@@ -14,10 +14,13 @@ interface OrderPreviewCardProps {
     order_number: string;
     order_date: string;
     subtotal: number;
+    raw_material_deductions?: number;
     net_total: number;
     status: string;
     parties: { name: string } | null;
+    party_id?: string | null;
   };
+  onDuplicate?: () => void;
 }
 
 interface OrderItem {
@@ -36,10 +39,13 @@ interface Deduction {
   amount: number;
 }
 
-export function OrderPreviewCard({ order }: OrderPreviewCardProps) {
+export function OrderPreviewCard({ order, onDuplicate }: OrderPreviewCardProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [deductions, setDeductions] = useState<Deduction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -100,18 +106,108 @@ export function OrderPreviewCard({ order }: OrderPreviewCardProps) {
     }
   };
 
-  // Fetch items for preview on mount
-  useState(() => {
-    supabase
-      .from('order_items')
-      .select('serial_no, particular, quantity, quantity_unit, rate_per_dzn, total')
-      .eq('order_id', order.id)
-      .order('serial_no')
-      .limit(3)
-      .then(({ data }) => {
-        if (data) setItems(data);
+  const handleDuplicate = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDuplicating(true);
+
+    try {
+      // Fetch items and deductions
+      const [itemsRes, deductionsRes] = await Promise.all([
+        supabase.from('order_items').select('*').eq('order_id', order.id),
+        supabase.from('raw_material_deductions').select('*').eq('order_id', order.id),
+      ]);
+
+      // Generate new order number
+      const { data: newOrderNumber } = await supabase.rpc('get_party_order_number', {
+        p_party_id: order.party_id,
       });
-  });
+
+      // Create new order with today's date
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: newOrderNumber || `DUP-${Date.now()}`,
+          order_date: new Date().toISOString().split('T')[0],
+          party_id: order.party_id,
+          subtotal: order.subtotal,
+          raw_material_deductions: order.raw_material_deductions || 0,
+          net_total: order.net_total,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Copy items
+      if (itemsRes.data && itemsRes.data.length > 0) {
+        const newItems = itemsRes.data.map((item) => ({
+          order_id: newOrder.id,
+          serial_no: item.serial_no,
+          particular: item.particular,
+          quantity: item.quantity,
+          quantity_unit: item.quantity_unit,
+          rate_per_dzn: item.rate_per_dzn,
+          total: item.total,
+        }));
+        await supabase.from('order_items').insert(newItems);
+      }
+
+      // Copy deductions (without stock deduction - that happens on order completion)
+      if (deductionsRes.data && deductionsRes.data.length > 0) {
+        const newDeductions = deductionsRes.data.map((d) => ({
+          order_id: newOrder.id,
+          material_name: d.material_name,
+          quantity: d.quantity,
+          rate: d.rate,
+          amount: d.amount,
+        }));
+        await supabase.from('raw_material_deductions').insert(newDeductions);
+      }
+
+      toast({
+        title: 'Order Duplicated',
+        description: `New order ${newOrderNumber} created`,
+      });
+
+      onDuplicate?.();
+      navigate(`/orders/${newOrder.id}`);
+    } catch (error) {
+      console.error('Error duplicating order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to duplicate order',
+        variant: 'destructive',
+      });
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  // Fetch items and deductions for preview on mount
+  useEffect(() => {
+    const fetchPreviewData = async () => {
+      const [itemsRes, deductionsRes] = await Promise.all([
+        supabase
+          .from('order_items')
+          .select('serial_no, particular, quantity, quantity_unit, rate_per_dzn, total')
+          .eq('order_id', order.id)
+          .order('serial_no')
+          .limit(3),
+        supabase
+          .from('raw_material_deductions')
+          .select('material_name, quantity, rate, amount')
+          .eq('order_id', order.id)
+          .limit(2),
+      ]);
+      
+      if (itemsRes.data) setItems(itemsRes.data);
+      if (deductionsRes.data) setDeductions(deductionsRes.data);
+    };
+    
+    fetchPreviewData();
+  }, [order.id]);
 
   return (
     <Card className="hover:shadow-md transition-all duration-200 border-border/50 overflow-hidden">
@@ -173,24 +269,74 @@ export function OrderPreviewCard({ order }: OrderPreviewCardProps) {
               </div>
             )}
 
-            {/* Net Total */}
-            <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <span className="text-sm font-medium text-muted-foreground">Net Total</span>
-              <span className="text-lg font-bold text-primary">{formatCurrency(order.net_total)}</span>
+            {/* Raw Material Deductions Preview */}
+            {(deductions.length > 0 || (order.raw_material_deductions && order.raw_material_deductions > 0)) && (
+              <div className="bg-destructive/5 rounded-md p-2 text-xs border border-destructive/10">
+                <div className="flex items-center gap-1 font-medium text-destructive/80 mb-1">
+                  <Package className="h-3 w-3" />
+                  <span>Raw Material Deductions</span>
+                </div>
+                {deductions.length > 0 ? (
+                  <>
+                    {deductions.map((d, idx) => (
+                      <div key={idx} className="flex justify-between py-0.5 text-muted-foreground">
+                        <span className="truncate max-w-[60%]">{d.material_name}</span>
+                        <span className="font-medium text-destructive/70">-{formatCurrency(d.amount)}</span>
+                      </div>
+                    ))}
+                    {deductions.length > 2 && (
+                      <div className="text-muted-foreground text-center pt-1">
+                        +more deductions...
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-muted-foreground">Total Deductions</span>
+                    <span className="font-medium text-destructive/70">-{formatCurrency(order.raw_material_deductions || 0)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Totals */}
+            <div className="pt-2 border-t border-border/50 space-y-1">
+              {(order.raw_material_deductions && order.raw_material_deductions > 0) && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium">{formatCurrency(order.subtotal)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Net Total</span>
+                <span className="text-lg font-bold text-primary">{formatCurrency(order.net_total)}</span>
+              </div>
             </div>
           </div>
         </Link>
 
-        {/* Action Button */}
-        <div className="px-4 pb-3">
+        {/* Action Buttons */}
+        <div className="px-4 pb-3 flex gap-2">
           <Button 
             onClick={handleViewPDF}
             disabled={loading}
-            className="w-full gradient-primary border-0"
+            className="flex-1 gradient-primary border-0"
             size="sm"
           >
             <FileText className="h-4 w-4 mr-2" />
             {loading ? 'Loading...' : 'View PDF'}
+          </Button>
+          <Button
+            onClick={handleDuplicate}
+            disabled={duplicating}
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+          >
+            <Copy className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:ml-2">
+              {duplicating ? 'Copying...' : 'Duplicate'}
+            </span>
           </Button>
         </div>
       </CardContent>
