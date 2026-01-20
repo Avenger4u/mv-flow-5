@@ -24,7 +24,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Pencil, Trash2, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, FileText } from 'lucide-react';
 import { generateOrderPDF } from '@/lib/pdf-generator';
 
 interface Order {
@@ -159,10 +159,6 @@ export default function OrderDetail() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleDownloadPDF = async () => {
     if (!order) return;
     
@@ -170,7 +166,7 @@ export default function OrderDetail() {
       await generateOrderPDF(order, items, deductions);
       toast({
         title: 'Success',
-        description: 'PDF downloaded successfully',
+        description: 'PDF opened successfully',
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -241,7 +237,7 @@ export default function OrderDetail() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 print:hidden">
+          <div className="flex flex-wrap gap-2">
             <Select value={order.status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-full sm:w-36">
                 <SelectValue />
@@ -253,28 +249,23 @@ export default function OrderDetail() {
             </Select>
 
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={handleDownloadPDF} size="sm" className="flex-1 sm:flex-none">
+                <FileText className="h-4 w-4 mr-2" />
+                View PDF
+              </Button>
+
               <Button variant="outline" asChild size="sm" className="flex-1 sm:flex-none">
                 <Link to={`/orders/${order.id}/edit`}>
-                  <Pencil className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Edit</span>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
                 </Link>
-              </Button>
-
-              <Button variant="outline" onClick={handlePrint} size="sm" className="flex-1 sm:flex-none">
-                <Printer className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
-
-              <Button variant="outline" onClick={handleDownloadPDF} size="sm" className="flex-1 sm:flex-none">
-                <Download className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">PDF</span>
               </Button>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm" className="flex-1 sm:flex-none">
-                    <Trash2 className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Delete</span>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
@@ -296,17 +287,10 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {/* Printable Content */}
-        <div ref={printRef} className="print:p-8">
-          {/* Print Header */}
-          <div className="hidden print:block text-center mb-8">
-            <h1 className="text-2xl font-bold">Mystic Vastra</h1>
-            <p className="text-sm">Madhuvan Enclave, Krishna Nagar, Mathura</p>
-            <h2 className="text-xl font-semibold mt-4">Packing List</h2>
-          </div>
-
+        {/* Order Content */}
+        <div ref={printRef}>
           {/* Order Info */}
-          <Card className="print:shadow-none print:border-0">
+          <Card>
             <CardContent className="pt-6">
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
@@ -329,7 +313,7 @@ export default function OrderDetail() {
           </Card>
 
           {/* Items Table */}
-          <Card className="mt-4 sm:mt-6 print:shadow-none print:border-0">
+          <Card className="mt-4 sm:mt-6">
             <CardHeader className="pb-2 sm:pb-4">
               <CardTitle className="text-base sm:text-lg font-display">Items</CardTitle>
             </CardHeader>
@@ -386,7 +370,7 @@ export default function OrderDetail() {
 
           {/* Deductions */}
           {deductions.length > 0 && (
-            <Card className="mt-4 sm:mt-6 print:shadow-none print:border-0">
+            <Card className="mt-4 sm:mt-6">
               <CardHeader className="pb-2 sm:pb-4">
                 <CardTitle className="text-base sm:text-lg font-display">Raw Material Received</CardTitle>
               </CardHeader>
@@ -437,7 +421,7 @@ export default function OrderDetail() {
           )}
 
           {/* Totals */}
-          <Card className="mt-4 sm:mt-6 bg-muted/30 print:shadow-none print:border print:bg-transparent">
+          <Card className="mt-4 sm:mt-6 bg-muted/30">
             <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
               <div className="space-y-2 max-w-sm ml-auto text-sm sm:text-base">
                 <div className="flex justify-between">
@@ -454,7 +438,7 @@ export default function OrderDetail() {
                 )}
                 <div className="flex justify-between pt-2 border-t text-base sm:text-lg font-bold">
                   <span>Net Total:</span>
-                  <span className="text-primary print:text-foreground">
+                  <span className="text-primary">
                     {formatCurrency(order.net_total)}
                   </span>
                 </div>
@@ -463,21 +447,6 @@ export default function OrderDetail() {
           </Card>
         </div>
       </div>
-
-      {/* Print Styles */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print\\:block, .print\\:block * {
-            visibility: visible;
-          }
-          [class*="print:hidden"] {
-            display: none !important;
-          }
-        }
-      `}</style>
     </AppLayout>
   );
 }
